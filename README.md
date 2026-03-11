@@ -109,6 +109,27 @@ We don't just write code; we visualize the silicon.
 
 ---
 
+## 🔬 Literature Survey & Competitive Analysis
+
+How does UPU compare to the most prominent open-source hardware research and industrial projects in the world?
+
+| Feature | **UPU (This Project)** | **OpenPiton** [1] | **ESP Platform** [2] | **PULP Platform** [3] | **Celerity SoC** [4] |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Architectural Scope** | **End-to-End** (Edge to HPC) | General-purpose Manycore | SoC Integration Platform | Ultra Low-Power (IoT) | Tiered Accelerator Fabric |
+| **Heterogeneous Cores** | **Unified**: CPU+GPU+TPU+NPU | Primarily CPU (RISC-V) | Accelerator Socket-based | RISC-V Clusters | CPU + Manycore + BNN |
+| **Interconnect** | **Hyper-NoC** + UCIe Chiplets | P-Mesh NoC | Heterogeneous NoC | Crossbar / NoC | Tiered Fabric NoC |
+| **Silicon Nodes** | **130nm → 7nm → 2nm GAA** | IBM 32nm / TSMC 28nm | Various (FPGA/ASIC) | GF 22nm | TSMC 16nm FFC |
+| **Visual Verification** | **Yes**: Transistor-Exact Sim | No (Waveform only) | No | No | No |
+| **Open Source** | **Full RTL Monorepo** | Permissive | Open SoC Platform | Permissive | Partially Open |
+
+### **References:**
+*   [1] **OpenPiton**: *Jonathan Balkind et al.*, "OpenPiton: An Open Source Manycore Research Platform," ASPLOS 2016.
+*   [2] **ESP**: *Luca Carloni et al.*, "The Embedded Scalable Platforms Interface," Columbia University.
+*   [3] **PULP**: *Luca Benini et al.*, "Parallel Ultra-Low-Power Platform for IoT," DATE 2017.
+*   [4] **Celerity**: *Scott Davidson et al.*, "The Celerity Open-Source RISC-V Tiered Accelerator Fabric SoC," IEEE Micro 2018.
+
+---
+
 ## ⚡ Quick Start (Synthesis)
 
 ### For Edge (v1):
