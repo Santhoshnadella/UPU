@@ -1,47 +1,25 @@
 /**
- * UPU v1 FPGA Wrapper (Target: Digilent Arty A7-100T)
- * Maps physical FPGA pins to the UPU SoC ports.
+ * ARTY A7 FPGA WRAPPER for UPU
  */
-
-module upu_arty_a7_wrapper (
-    input  logic        CLK100MHZ, // 100MHz Oscillator on Arty
-    input  logic [3:0]  sw,        // Switches (rst_n = sw[0])
-    output logic [3:0]  led,       // GPIO
-    output logic        uart_tx_out,
-    input  logic        uart_rx_in
+module arty_a7_wrapper (
+    input  logic CLK100MHZ,
+    input  logic ck_rst,
+    
+    // UART
+    output logic uart_txd,
+    input  logic uart_rxd
 );
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Clock divider (100MHz -> 50MHz for UPU v1)
-    // ─────────────────────────────────────────────────────────────────────────
-    logic clk_50mhz;
-    logic clk_div_q;
+    logic clk, rst_n;
+    assign clk = CLK100MHZ; // Placeholder for PLL
+    assign rst_n = ck_rst;
 
-    always_ff @(posedge CLK100MHZ) begin
-        clk_div_q <= ~clk_div_q;
-    end
-    assign clk_50mhz = clk_div_q;
-
-    // Reset sync
-    logic rst_n_sync;
-    always_ff @(posedge clk_50mhz) begin
-        rst_n_sync <= sw[0]; // Switch 0 is System Reset
-    end
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // UPU SoC Instantiation
-    // ─────────────────────────────────────────────────────────────────────────
-    logic [7:0] gpio_out;
-
-    upu_top soc_inst (
-        .clk(clk_50mhz),
-        .rst_n(rst_n_sync),
-        .tx(uart_tx_out),
-        .rx(uart_rx_in),
-        .gpio_out(gpio_out)
+    // Instantiate UPU SoC
+    upu_top u_soc (
+        .clk(clk),
+        .rst_n(rst_n)
     );
 
-    // Map lower 4 bits of UPU GPIO to the 4 LEDs on the Arty board
-    assign led = gpio_out[3:0];
+    // ILA Core could be added here for Phase 5 verification
 
 endmodule

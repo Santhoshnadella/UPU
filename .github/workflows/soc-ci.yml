@@ -1,0 +1,36 @@
+name: UPU SoC CI/CD
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  lint-and-sim:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y verilator iverilog yosys
+
+      - name: RTL Lint
+        run: |
+          verilator --lint-only -Wall --timing -Irtl/cores -Irtl/bus rtl/upu_top.sv
+
+      - name: Logic Synthesis Check (Yosys)
+        run: |
+          yosys -p "read_verilog -sv rtl/cores/*.sv rtl/bus/*.sv rtl/upu_top.sv; synth_sky130 -top upu_top"
+
+  physical-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: OpenLane Dry Run
+        run: |
+          echo "Simulating OpenLane Flow... (Actual flow requires Docker/PDK)"
+          # In a real environment, we would run:
+          # docker run -v $(pwd):/work efabless/openlane:latest bash -c "./flow.tcl -design upu_top"

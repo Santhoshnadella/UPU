@@ -1,0 +1,22 @@
+name: Verilator Lint
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Verilator
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y verilator
+
+      - name: Run Verilator Lint
+        run: |
+          verilator --lint-only -Wall --timing -Irtl/cores -Irtl/bus rtl/cores/rv64_top.sv

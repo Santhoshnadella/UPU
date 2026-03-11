@@ -27,12 +27,18 @@ LDFLAGS = -T ./firmware/link.ld -nostdlib
 FW_SOURCES = ./firmware/src/main.c ./firmware/drivers/tpu.c ./firmware/drivers/gpu.c ./firmware/drivers/npu.c ./firmware/drivers/uart.c ./firmware/drivers/plic.c ./firmware/drivers/timer.c ./firmware/drivers/gpio.c
 FW_ASM = ./firmware/crt0.S
 
-.PHONY: all clean sim_top sim_cpu sim_tpu sim_npu sim_gpu synth physical firmware
+.PHONY: all clean sim_top sim_cpu sim_tpu sim_npu sim_gpu synth physical firmware lint
 
 all: firmware sim_top sim_cpu sim_tpu sim_npu sim_gpu
 
 clean:
-	rm -rf $(OUTPUT_DIR) *.vcd *.vvp *.elf *.bin *.hex
+	rm -rf $(OUTPUT_DIR) *.vcd *.vvp *.elf *.bin *.hex obj_dir/
+
+# -------------------------------------------------------------------------
+# Linting (Verilator)
+# -------------------------------------------------------------------------
+lint:
+	verilator --lint-only -Wall --timing -Irtl/cores -Irtl/bus rtl/cores/rv64_top.sv
 
 # -------------------------------------------------------------------------
 # Firmware Build
