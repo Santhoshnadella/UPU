@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Visual UPU Silicon Simulator - Top Tier Industrial Edition</title>
+    <style>
+        :root {
+            --bg-body: #050608;
+            --bg-ui: #1a1c22;
+            --die-black: #000000;
+            --metal: #cb00ff;
+            --poly: #ffff00;
+            --diff: #00ff00;
+            --well: #800000;
+            --active: #ffffff;
+            --thermal-cold: #00f2fe;
+            --thermal-hot: #ff416c;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: #e0e0e0;
+            font-family: 'Fira Code', 'Roboto Mono', monospace;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- POST PROCESSING OVERLAYS --- */
+        #crt-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+            z-index: 2000;
+            opacity: 0.3;
+        }
+
+        #scanline {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.05) 50%, transparent 100%);
+            background-size: 100% 4px;
+            animation: scanline 10s linear infinite;
+            pointer-events: none;
+            z-index: 2001;
+        }
+
+        @keyframes scanline { 0% { transform: translateY(-100%); } 100% { transform: translateY(100%); } }
+
+        /* header */
+        header {
+            padding: 10px 20px;
+            background: #000;
+            border-bottom: 2px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            color: var(--metal);
+            margin: 0;
+            font-size: 20px;
+            text-shadow: 0 0 10px var(--metal);
+        }
+
+        #main-layout {
+            display: flex;
+            flex: 1;
+            background: #000;
+            padding: 4px;
+            gap: 4px;
+            position: relative;
+        }
+
+        #viewport-container {
+            flex: 1;
+            background: #000;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid #333;
+            cursor: move;
+            filter: blur(0.4px) contrast(1.2);
+        }
+
+        /* Bloom Filter for active logic */
+        #viewport-container::after {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            box-shadow: inset 0 0 100px rgba(203, 0, 255, 0.1);
+            pointer-events: none;
+        }
+
+        #side-panel {
+            width: 380px;
+            background: var(--bg-ui);
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #444;
+        }
+
+        /* Navigation / Control Grids */
+        .panel-section { padding: 12px; border-bottom: 1px solid #333; }
+        
+        .mode-selector {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 4px;
+            background: #111;
+            padding: 10px;
+        }
+
+        .btn {
+            background: #252833;
+            border: 1px solid #444;
+            color: #999;
+            padding: 8px;
+            font-size: 10px;
+            cursor: pointer;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .btn:hover { background: #333; color: #fff; }
+        .btn.active { background: var(--metal); color: #fff; border-color: #fff; box-shadow: 0 0 10px var(--metal); }
+
+        .slider-box { margin-top: 10px; font-size: 11px; }
+        input[type=range] { width: 100%; accent-color: var(--metal); }
+
+        #mem-dump {
+            flex: 1;
+            background: #000;
+            margin: 10px;
+            padding: 10px;
+            font-size: 10px;
+            overflow-y: scroll;
+            border-left: 2px solid #333;
+            color: #00f2fe;
+            white-space: pre;
+        }
+
+        .mem-pc { color: #fff; background: rgba(203, 0, 255, 0.3); padding: 0 4px; border: 1px solid var(--metal); }
+
+        /* Oscilloscope */
+        #oscilloscope {
+            height: 120px;
+            background: #050505;
+            border-top: 2px solid #333;
+            position: relative;
+        }
+
+        canvas { width: 100%; height: 100%; }
+
+        /* Layer Visibility Toggles */
+        .layer-toggles { display: flex; gap: 5px; margin-top: 8px; }
+        .layer-btn { font-size: 9px; padding: 4px; flex: 1; opacity: 0.4; }
+        .layer-btn.visible { opacity: 1; background: #444; }
+
+        /* Silicon SVG Layers */
+        .m1 { stroke: var(--metal); stroke-width: 2.5; fill: none; opacity: 0.6; transition: opacity 0.3s; }
+        .p1 { stroke: var(--poly); stroke-width: 1.5; fill: none; opacity: 0.5; transition: opacity 0.3s; }
+        .nd { stroke: var(--diff); stroke-width: 3.5; fill: rgba(0,255,0,0.05); opacity: 0.4; transition: opacity 0.3s; }
+        
+        /* Thermal Heat Class */
+        .thermal { fill: rgba(255, 65, 108, 0); transition: fill 1s; }
+        
+        .glow {
+            stroke: #fff !important;
+            stroke-width: 5 !important;
+            filter: drop-shadow(0 0 8px #fff) drop-shadow(0 0 20px var(--metal));
+            opacity: 1 !important;
+        }
+
+        .label {
+            fill: #666; font-size: 32px; font-weight: 800; pointer-events: none;
+            text-transform: uppercase; letter-spacing: 2px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="crt-overlay"></div>
+<div id="scanline"></div>
+
+<header>
+    <h1>UPU v2.2 "HYPERION-PRO" SILICON ANALYZER</h1>
+    <div style="font-size: 12px; color: #666;">FIRMWARE: PRO-GEN-2026 | STATUS: <span id="sys-status" style="color:var(--diff)">ONLINE</span></div>
+</header>
+
+<div id="main-layout">
+    <div id="viewport-container">
+        <svg id="die-svg" viewBox="0 0 2000 2000">
+            <!-- Background Thermal Layer -->
+            <g id="thermal-layer"></g>
+            
+            <g id="camera-matrix">
+                <!-- Silicon Structure -->
+                <g id="ly-diff"></g>
+                <g id="ly-poly"></g>
+                <g id="ly-metal"></g>
+                <g id="ly-vias"></g>
+                <g id="ly-labels"></g>
+            </g>
+        </svg>
+    </div>
+
+    <div id="side-panel">
+        <div class="panel-section">
+            <div style="font-size: 11px; color:#666; margin-bottom: 5px;">ARCHITECTURE MODE</div>
+            <div class="mode-selector">
+                <div class="btn active" id="m-IDLE" onclick="setSimMode('IDLE')">IDLE</div>
+                <div class="btn" id="m-TPU" onclick="setSimMode('TPU')">AI_MASH</div>
+                <div class="btn" id="m-GPU" onclick="setSimMode('GPU')">VEC_CORE</div>
+                <div class="btn" id="m-NPU" onclick="setSimMode('NPU')">SPARSE</div>
+                <div class="btn" id="m-MEM" onclick="setSimMode('MEM')">I_BUS</div>
+                <div class="btn" id="m-FULL" onclick="setSimMode('FULL')">OVERLOAD</div>
+            </div>
+
+            <div class="slider-box">
+                CORE CLOCK FREQUENCY: <span id="clk-val">2.0</span> GHz
+                <input type="range" min="1" max="50" value="20" id="clk-slider" oninput="updateClock(this.value)">
+            </div>
+
+            <div class="layer-toggles">
+                <div class="btn layer-btn visible" id="t-m" onclick="toggleLayer('m')">METAL</div>
+                <div class="btn layer-btn visible" id="t-p" onclick="toggleLayer('p')">POLY</div>
+                <div class="btn layer-btn visible" id="t-d" onclick="toggleLayer('d')">DIFF</div>
+                <div class="btn layer-btn visible" id="t-h" onclick="toggleLayer('h')">HEAT</div>
+            </div>
+        </div>
+
+        <div class="panel-section" style="font-family: monospace; font-size: 12px; color: #fff;">
+            <div>PC: <span id="st-pc">0000</span> | INST: <span id="st-inst">NOP</span></div>
+            <div>TEMP: <span id="st-temp">32.4</span>°C | PWR: <span id="st-pwr">12.5</span>W</div>
+        </div>
+
+        <div id="mem-dump"></div>
+
+        <div id="oscilloscope">
+            <canvas id="scope-canvas"></canvas>
+            <div style="position: absolute; top:5px; left:5px; font-size:9px; color:rgba(255,255,255,0.3)">LIVE SCOPE (CLK / ADDR / DATA)</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const SVG_NS = "http://www.w3.org/2000/svg";
+    const layers = {
+        diff: document.getElementById('ly-diff'),
+        poly: document.getElementById('ly-poly'),
+        metal: document.getElementById('ly-metal'),
+        labels: document.getElementById('ly-labels'),
+        thermal: document.getElementById('thermal-layer')
+    };
+
+    let cycles = 0, pc = 0, clkSpeed = 20, isRunning = true;
+    let mode = "IDLE";
+    let thermalData = { TPU: 0, GPU: 0, NPU: 0, MEM: 0 };
+
+    // --- PROCEDURAL GENERATORS ---
+    function drawGrid(x, y, w, h, id, density=30) {
+        // Build dense logic fabric
+        for(let i=0; i<w/25; i++) {
+            const lx = x + i*25;
+            const p = document.createElementNS(SVG_NS, "path");
+            p.setAttribute("d", `M ${lx} ${y} v ${h}`);
+            p.setAttribute("class", "p1");
+            layers.poly.appendChild(p);
+
+            const m = document.createElementNS(SVG_NS, "path");
+            const my = y + (i * (h / (w/25)));
+            m.setAttribute("d", `M ${x} ${my} h ${w}`);
+            m.setAttribute("class", "m1");
+            m.setAttribute("id", `${id}_m_${i}`);
+            layers.metal.appendChild(m);
+
+            for (let j=0; j<density; j++) {
+                const dy = y + Math.random()*h;
+                const d = document.createElementNS(SVG_NS, "rect");
+                d.setAttribute("x", lx - 4); d.setAttribute("y", dy);
+                d.setAttribute("width", 8); d.setAttribute("height", 6);
+                d.setAttribute("class", "nd");
+                d.setAttribute("id", `${id}_t_${i}_${j}`);
+                layers.diff.appendChild(d);
+            }
+        }
+        
+        // Thermal zone
+        const t = document.createElementNS(SVG_NS, "rect");
+        t.setAttribute("x", x); t.setAttribute("y", y);
+        t.setAttribute("width", w); t.setAttribute("height", h);
+        t.setAttribute("class", "thermal");
+        t.setAttribute("id", `heat_${id}`);
+        layers.thermal.appendChild(t);
+        
+        const l = document.createElementNS(SVG_NS, "text");
+        l.setAttribute("x", x); l.setAttribute("y", y-10);
+        l.setAttribute("class", "label");
+        l.textContent = id;
+        layers.labels.appendChild(l);
+    }
+
+    function initDie() {
+        drawGrid(150, 150, 800, 700, "MEM", 40);
+        drawGrid(1050, 150, 800, 700, "GPU", 60);
+        drawGrid(150, 950, 800, 900, "NPU", 80);
+        drawGrid(1050, 950, 800, 900, "TPU", 100);
+        
+        // Power rails
+        for(let i=0; i<4; i++) {
+          const r = document.createElementNS(SVG_NS, "rect");
+          r.setAttribute("x", 50); r.setAttribute("y", 100 + i*600);
+          r.setAttribute("width", 1900); r.setAttribute("height", 30);
+          r.setAttribute("class", "m1"); r.setAttribute("style", "stroke-width:15; opacity:0.8;");
+          layers.metal.appendChild(r);
+        }
+    }
+
+    // --- SIMULATION ENGINE ---
+    function updateSim() {
+        cycles++;
+        pc = (pc + 4) % 1024;
+        
+        // Update Stats
+        document.getElementById('st-pc').innerText = pc.toString(16).padStart(4, '0');
+        const insts = ["V_MUL", "M_ACC", "L_SRAM", "MOV", "ADD", "SparseX"];
+        document.getElementById('st-inst').innerText = insts[cycles % insts.length];
+        
+        // Update Thermal Dynamics
+        Object.keys(thermalData).forEach(k => {
+            const isActive = (mode === k || mode === "FULL");
+            thermalData[k] = isActive ? Math.min(100, thermalData[k] + 2) : Math.max(0, thermalData[k] - 0.5);
+            const r = 255 * (thermalData[k]/100);
+            const b = 255 * (1 - thermalData[k]/100);
+            const rect = document.getElementById(`heat_${k}`);
+            if (rect) rect.style.fill = `rgba(${r}, 65, ${b}, 0.4)`;
+        });
+
+        const avgHeat = Object.values(thermalData).reduce((a,b)=>a+b, 0) / 4;
+        document.getElementById('st-temp').innerText = (32 + (avgHeat * 0.8)).toFixed(1);
+        document.getElementById('st-pwr').innerText = (12 + (avgHeat * 0.5)).toFixed(1);
+
+        // Visual pulses
+        document.querySelectorAll('.glow').forEach(g => g.classList.remove('glow'));
+        if (mode !== "IDLE") {
+            const target = mode === "FULL" ? ["MEM", "GPU", "NPU", "TPU"] : [mode];
+            target.forEach(t => {
+                const wires = document.querySelectorAll(`[id^="${t}_t_"]`);
+                for(let i=0; i<10; i++) wires[Math.floor(Math.random()*wires.length)].classList.add('glow');
+            });
+        }
+
+        renderMemory();
+        if(isRunning) setTimeout(updateSim, 1000 / clkSpeed);
+    }
+
+    function renderMemory() {
+        const dump = document.getElementById('mem-dump');
+        let html = '';
+        for(let i=0; i<20; i++) {
+           const addr = (i*4).toString(16).padStart(4, '0');
+           const val = Math.floor(Math.random()*0xFFFFFFFF).toString(16).padStart(8, '0');
+           const isPC = (i*4 === pc);
+           html += `<span class="${isPC ? 'mem-pc' : ''}">${addr}: ${val}</span>\n`;
+        }
+        dump.innerHTML = html;
+    }
+
+    // --- OSCILLOSCOPE LOGIC ---
+    const canvas = document.getElementById('scope-canvas');
+    const ctx = canvas.getContext('2d');
+    let scopeData = Array(100).fill(0);
+
+    function drawScope() {
+        canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Update data based on mode
+        scopeData.shift();
+        scopeData.push(mode === "IDLE" ? 0.2 : 0.4 + Math.random() * (clkSpeed / 50));
+
+        ctx.strokeStyle = '#00f2fe'; ctx.lineWidth = 2;
+        ctx.beginPath();
+        for(let i=0; i<scopeData.length; i++) {
+            const x = (canvas.width / 100) * i;
+            const y = canvas.height - (scopeData[i] * canvas.height);
+            if(i===0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        requestAnimationFrame(drawScope);
+    }
+
+    // --- UI CONTROLS ---
+    function setSimMode(m) {
+        mode = m;
+        document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(`m-${m}`).classList.add('active');
+        document.getElementById('sys-status').style.color = m === "FULL" ? "var(--thermal-hot)" : "var(--diff)";
+    }
+
+    function updateClock(v) {
+        clkSpeed = v;
+        document.getElementById('clk-val').innerText = (v/10).toFixed(1);
+    }
+
+    function toggleLayer(l) {
+        const btn = document.getElementById(`t-${l}`);
+        const layer = {m: 'metal', p: 'poly', d: 'diff', h: 'thermal'}[l];
+        const isVisible = btn.classList.toggle('visible');
+        layers[layer].style.opacity = isVisible ? "1" : "0";
+    }
+
+    // --- INTERACTION ---
+    let scale = 1.0, tx = 0, ty = 0;
+    const vp = document.getElementById('viewport-container');
+    const matrix = document.getElementById('camera-matrix');
+
+    vp.onwheel = e => {
+        e.preventDefault();
+        scale *= (e.deltaY > 0 ? 0.9 : 1.1);
+        scale = Math.max(0.2, Math.min(10, scale));
+        matrix.setAttribute("transform", `translate(${tx},${ty}) scale(${scale})`);
+    };
+
+    let dragging = false, lx, ly;
+    vp.onmousedown = e => { dragging = true; lx = e.clientX; ly = e.clientY; };
+    window.onmousemove = e => {
+        if(!dragging) return;
+        tx += (e.clientX - lx); ty += (e.clientY - ly);
+        lx = e.clientX; ly = e.clientY;
+        matrix.setAttribute("transform", `translate(${tx},${ty}) scale(${scale})`);
+    };
+    window.onmouseup = () => dragging = false;
+
+    initDie();
+    updateSim();
+    drawScope();
+</script>
+
+</body>
+</html>

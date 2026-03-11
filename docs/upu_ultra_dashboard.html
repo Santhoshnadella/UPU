@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UPU v2 "Ultra" Performance Dashboard</title>
+    <style>
+        :root {
+            --bg: #0a0b14;
+            --panel: #161a2e;
+            --accent: #4facfe;
+            --text: #e0e6f0;
+            --dim-text: #8ba2b2;
+            --danger: #ff4d4d;
+            --success: #00e676;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--panel);
+            padding-bottom: 12px;
+        }
+
+        .header-left h1 {
+            margin: 0;
+            font-size: 24px;
+            letter-spacing: 1px;
+            color: var(--accent);
+            text-transform: uppercase;
+        }
+
+        .header-left p {
+            margin: 4px 0 0 0;
+            font-size: 14px;
+            color: var(--dim-text);
+        }
+
+        .live-tag {
+            background-color: var(--danger);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 800;
+            animation: pulse 1s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from {
+                opacity: 1;
+            }
+
+            to {
+                opacity: 0.5;
+            }
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1.2fr;
+            grid-template-rows: auto auto;
+            gap: 24px;
+        }
+
+        .card {
+            background-color: var(--panel);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .card-header {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--dim-text);
+            text-transform: uppercase;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 8px;
+        }
+
+        /* Metric Gauges */
+        .metrics {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .metric-item {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .metric-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: #080a10;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #4facfe, #00f2fe);
+            transition: width 0.5s ease;
+            box-shadow: 0 0 8px var(--accent);
+        }
+
+        .danger-fill {
+            background: linear-gradient(90deg, #ff4d4d, #f44336) !important;
+            box-shadow: 0 0 8px var(--danger);
+        }
+
+        /* Heatmap / Chip View */
+        .chip-viz {
+            position: relative;
+            width: 100%;
+            height: 300px;
+            background: #080a10;
+            border-radius: 8px;
+            border: 1px solid #1e2540;
+            overflow: hidden;
+        }
+
+        .core {
+            position: absolute;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: background-color 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            color: rgba(255, 255, 255, 0.3);
+            text-align: center;
+        }
+
+        /* Console / Logs */
+        .console {
+            background: #05060a;
+            padding: 12px;
+            border-radius: 6px;
+            font-family: 'Fira Code', monospace;
+            font-size: 12px;
+            color: #4dc1ff;
+            height: 180px;
+            overflow-y: auto;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .log-line {
+            margin-bottom: 4px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .log-ts {
+            color: var(--dim-text);
+            min-width: 60px;
+        }
+
+        .log-tag {
+            color: #f9d423;
+            font-weight: bold;
+        }
+
+        /* Big Values */
+        .big-val {
+            font-size: 32px;
+            font-weight: 800;
+            color: white;
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
+        }
+
+        .unit {
+            font-size: 14px;
+            color: var(--dim-text);
+            font-weight: 400;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="header-left">
+            <h1>UPU v2 "Ultra" System Monitor</h1>
+            <p>Target: 7nm HPC | 2.0 GHz Peak | Triple-Channel HBM3</p>
+        </div>
+        <div class="live-tag">LIVE SIMULATION</div>
+    </header>
+
+    <div class="dashboard-grid">
+        <!-- Column 1: Power & Thermal -->
+        <div class="card">
+            <div class="card-header">Power & Thermal Dynamics</div>
+            <div class="metrics">
+                <div class="metric-item">
+                    <div class="big-val" id="val-power">0.0 <span class="unit">WATTS</span></div>
+                    <div class="progress-bar">
+                        <div id="fill-power" class="progress-fill"></div>
+                    </div>
+                    <div class="metric-label"><span>Package TDP Limit: 125W</span><span id="pct-power">0%</span></div>
+                </div>
+                <div class="metric-item">
+                    <div class="big-val" id="val-temp">0 <span class="unit">°C</span></div>
+                    <div class="progress-bar">
+                        <div id="fill-temp" class="progress-fill"></div>
+                    </div>
+                    <div class="metric-label"><span>Throttle Threshold: 105°C</span><span id="pct-temp">0%</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Column 2: Accelerator Performance -->
+        <div class="card">
+            <div class="card-header">Compute Throughput</div>
+            <div class="metrics">
+                <div class="metric-item">
+                    <div class="big-val" id="val-tpu">0.0 <span class="unit">TFLOPS (TPU)</span></div>
+                    <div class="progress-bar">
+                        <div id="fill-tpu" class="progress-fill" style="background: #a855f7;"></div>
+                    </div>
+                    <div class="metric-label"><span>Inference Path: 1B Transformers</span><span id="pct-tpu">0%</span>
+                    </div>
+                </div>
+                <div class="metric-item">
+                    <div class="big-val" id="val-gpu">0 <span class="unit">FPS (Titan GPU)</span></div>
+                    <div class="progress-bar">
+                        <div id="fill-gpu" class="progress-fill" style="background: #3b82f6;"></div>
+                    </div>
+                    <div class="metric-label"><span>4K Dynamic Triple-AA Target</span><span id="pct-gpu">0%</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Column 3: Memory & NoC Traffic -->
+        <div class="card" style="grid-row: span 2;">
+            <div class="card-header">Hyper-NoC & Memory Subsystem</div>
+            <div class="big-val" id="val-hbm">0.0 <span class="unit">GB/s (HBM3)</span></div>
+            <div class="progress-bar">
+                <div id="fill-hbm" class="progress-fill" style="background: #f9d423;"></div>
+            </div>
+
+            <div class="chip-viz" id="chip-box">
+                <!-- Programmatically populated with Heatmap cores -->
+            </div>
+
+            <div class="console" id="console">
+                <!-- Simulated Logs -->
+            </div>
+        </div>
+
+        <!-- Row 2: Logic Frequency -->
+        <div class="card" style="grid-column: span 2;">
+            <div class="card-header">Logic Frequency Closure</div>
+            <div style="display: flex; gap: 40px; align-items: center;">
+                <div style="flex: 1;">
+                    <div class="big-val" id="val-clk">2.000 <span class="unit">GHz</span></div>
+                    <div class="progress-bar">
+                        <div id="fill-clk" class="progress-fill" style="width: 100%;"></div>
+                    </div>
+                    <div class="metric-label" style="margin-top: 8px;"><span>N7 FinFET Critical Path Closure
+                            Verified</span></div>
+                </div>
+                <div style="width: 180px; text-align: center; border-left: 1px solid rgba(255,255,255,0.1);">
+                    <div class="label" style="color:var(--dim-text); font-size:12px;">ACTIVE THREADS</div>
+                    <div style="font-size: 24px; font-weight: 800; color: var(--success);" id="val-threads">2048</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const limits = { power: 125, temp: 105, tpu: 128, gpu: 144, hbm: 512 };
+        const cores = [
+            { name: 'TITAN CPU 0', x: 10, y: 10, w: 20, h: 25, color: '#ef4444' },
+            { name: 'TITAN CPU 1', x: 30, y: 10, w: 20, h: 25, color: '#ef4444' },
+            { name: 'TITAN CPU 2', x: 10, y: 35, w: 20, h: 25, color: '#ef4444' },
+            { name: 'TITAN CPU 3', x: 30, y: 35, w: 20, h: 25, color: '#ef4444' },
+            { name: 'GPU ARRAY', x: 55, y: 10, w: 35, h: 50, color: '#3b82f6' },
+            { name: 'INFINITY TPU', x: 10, y: 65, w: 40, h: 25, color: '#a855f7' },
+            { name: 'ECHO NPU', x: 55, y: 65, w: 20, h: 25, color: '#22c55e' },
+            { name: 'L3 CACHE', x: 77, y: 65, w: 13, h: 25, color: '#eab308' },
+            { name: 'NoC SPINE', x: 50, y: 10, w: 3, h: 80, color: 'rgba(255,255,255,0.2)' }
+        ];
+
+        const chipBox = document.getElementById('chip-box');
+        cores.forEach(c => {
+            const el = document.createElement('div');
+            el.className = 'core';
+            el.style.left = c.x + '%'; el.style.top = c.y + '%';
+            el.style.width = c.w + '%'; el.style.height = c.h + '%';
+            el.innerText = c.name;
+            el.id = 'core-' + c.name.replace(' ', '-').toLowerCase();
+            chipBox.appendChild(el);
+        });
+
+        // Simulation Loop
+        let t = 0;
+        function simulate() {
+            t += 0.05;
+
+            // Dynamic Values using sine waves + noise
+            const power = (90 + Math.sin(t) * 15 + Math.random() * 5).toFixed(1);
+            const temp = Math.floor(65 + Math.sin(t * 0.5) * 10 + Math.random() * 3);
+            const tpu = (100 + Math.cos(t * 0.8) * 20 + Math.random() * 8).toFixed(1);
+            const gpu = Math.floor(120 + Math.sin(t * 1.2) * 10 + Math.random() * 4);
+            const hbm = (450 + Math.sin(t) * 40 + Math.random() * 20).toFixed(1);
+
+            // Update Big Values
+            document.getElementById('val-power').innerHTML = `${power} <span class="unit">WATTS</span>`;
+            document.getElementById('val-temp').innerHTML = `${temp} <span class="unit">°C</span>`;
+            document.getElementById('val-tpu').innerHTML = `${tpu} <span class="unit">TFLOPS</span>`;
+            document.getElementById('val-gpu').innerHTML = `${gpu} <span class="unit">FPS</span>`;
+            document.getElementById('val-hbm').innerHTML = `${hbm} <span class="unit">GB/s</span>`;
+
+            // Update Progress Bars
+            updateBar('power', power, limits.power);
+            updateBar('temp', temp, limits.temp);
+            updateBar('tpu', tpu, limits.tpu);
+            updateBar('gpu', gpu, limits.gpu);
+            updateBar('hbm', hbm, limits.hbm);
+
+            // Update Heatmap colors
+            cores.forEach(c => {
+                const el = document.getElementById('core-' + c.name.replace(' ', '-').toLowerCase());
+                const heat = 0.3 + Math.random() * 0.4;
+                el.style.backgroundColor = c.color.replace(')', `, ${heat})`).replace('#', 'rgba('); // Simple conversion hack
+                if (c.color.startsWith('#')) {
+                    // Proper HEX to RGBA for heatmap
+                    const r = parseInt(c.color.slice(1, 3), 16);
+                    const g = parseInt(c.color.slice(3, 5), 16);
+                    const b = parseInt(c.color.slice(5, 7), 16);
+                    el.style.backgroundColor = `rgba(${r}, ${g}, ${b}, ${heat})`;
+                }
+            });
+
+            // Periodic Logs
+            if (Math.random() > 0.95) addLog();
+
+            requestAnimationFrame(simulate);
+        }
+
+        function updateBar(id, val, limit) {
+            const pct = Math.min((val / limit) * 100, 100);
+            const fill = document.getElementById('fill-' + id);
+            fill.style.width = pct + '%';
+            document.getElementById('pct-' + id).innerText = Math.floor(pct) + '%';
+
+            if (pct > 90) fill.classList.add('danger-fill');
+            else fill.classList.remove('danger-fill');
+        }
+
+        const logPool = [
+            ["TPU", "Matrix Cluster 0x07 committed weight load for 1B model layer 0xAF."],
+            ["GPU", "Frame Latency 7.2ms | BVH Traversal complete for scene node 142."],
+            ["NOC", "Congestion detected at East Node Router (Port 2) | Rerouting flit cluster."],
+            ["DRAM", "HBM3 Stack 0 Refreshed. Efficiency: 98.4% utilization."],
+            ["CPU", "OoO Reorder Buffer flush complete. Thread 0x02 context restored."],
+            ["PWR", "Dynamic Voltage Frequency Scaling (DVFS) adjusting to 0.85V for thermal headroom."],
+            ["NPU", "Echo sparsity check: Skipping 412k zero-ops in current window."]
+        ];
+
+        function addLog() {
+            const console = document.getElementById('console');
+            const [tag, msg] = logPool[Math.floor(Math.random() * logPool.length)];
+            const ts = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+            const line = document.createElement('div');
+            line.className = 'log-line';
+            line.innerHTML = `<span class="log-ts">[${ts}]</span><span class="log-tag">[${tag}]</span> <span>${msg}</span>`;
+            console.insertBefore(line, console.firstChild);
+            if (console.childElementCount > 20) console.removeChild(console.lastChild);
+        }
+
+        simulate();
+    </script>
+</body>
+
+</html>

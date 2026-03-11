@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UPU Physical Layout / GDSII Preview</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f7f9fc; color: #333; padding: 30px; }
+        .notebook-cell { background-color: white; border: 1px solid #e0e0e0; padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); width: 850px; margin: 0 auto; }
+        h3 { margin-top: 0; font-size: 15px; font-weight: 600; color: #111; }
+        .status-container { margin-bottom: 20px; }
+        ul { list-style-type: disc; padding-left: 25px; font-size: 14px; color: #444; margin-top: 8px;}
+        li { margin-bottom: 4px; }
+        .canvas-container { margin-top: 15px; border: 2px solid #333; background-color: #050505; width: 100%; height: 500px; position: relative; overflow: hidden; border-radius: 4px; }
+        canvas { display: block; }
+        .chip-label { position: absolute; bottom: 10px; right: 10px; color: rgba(255,255,255,0.5); font-family: monospace; font-size: 12px; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+<div class="notebook-cell">
+    <div class="status-container">
+        <h3>Time Elapsed: 45.21s</h3>
+        <br>
+        <b>Views updated:</b>
+        <ul>
+            <li>Verilog Netlist (`upu_top.v`)</li>
+            <li>Powered Verilog Netlist (`upu_top.powered.v`)</li>
+            <li>Design Exchange Format (`upu_top.def`)</li>
+            <li>OpenDB Database (`upu_top.odb`)</li>
+            <li>Design Constraints (`upu_top.sdc`)</li>
+        </ul>
+    </div>
+
+    <b>Preview (Physical Placement & Routing):</b>
+    <div class="canvas-container">
+        <canvas id="layoutCanvas" width="800" height="500"></canvas>
+        <div class="chip-label">UPU v1 (Sky130) Target - DIE CROP</div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('layoutCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // 1. Draw Background Grid
+    ctx.strokeStyle = '#1a1a1a';
+    ctx.lineWidth = 1;
+    for(let i=0; i<canvas.width; i+=15) {
+        ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+    }
+    for(let i=0; i<canvas.height; i+=15) {
+        ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
+    }
+
+    // 2. Draw Die Boundary
+    const paddingX = 40;
+    const paddingY = 40;
+    const dieWidth = canvas.width - (paddingX * 2);
+    const dieHeight = canvas.height - (paddingY * 2);
+    
+    ctx.fillStyle = 'rgba(20, 30, 20, 0.4)';
+    ctx.fillRect(paddingX, paddingY, dieWidth, dieHeight);
+
+    // 3. Draw PDN (Power Delivery Network) - Horizontal thick stripes
+    // These represent VDD (Power) and VSS (Ground) rails
+    const rowHeight = 35;
+    for(let i=paddingY; i<paddingY + dieHeight; i+=rowHeight) {
+        // VDD Line (Yellow)
+        ctx.fillStyle = 'rgba(200, 160, 40, 0.5)'; 
+        ctx.fillRect(paddingX, i, dieWidth, 4);
+        // VSS Line (Orange/Brown)
+        ctx.fillStyle = 'rgba(160, 90, 40, 0.4)'; 
+        ctx.fillRect(paddingX, i + (rowHeight/2), dieWidth, 4);
+    }
+
+    // 4. Draw Standard Cells (The logic gates)
+    // The green and purple blocks in your image
+    const colors = [
+        'rgba(40, 180, 80, 0.65)',   // Green (e.g. Logic)
+        'rgba(140, 60, 180, 0.6)',   // Purple (e.g. sequential)
+        'rgba(70, 120, 60, 0.5)',    // Dark green
+        'rgba(100, 50, 140, 0.5)'    // Dark purple
+    ];
+    
+    // Fill the standard cell rows
+    for(let row = paddingY + 4; row < paddingY + dieHeight - rowHeight; row += (rowHeight/2)) {
+        let x = paddingX + 5;
+        // Don't fill 100% of the row to simulate realistic density
+        while(x < paddingX + dieWidth - 10) {
+            let cellWidth = 8 + Math.random() * 30; // Random cell width
+            if (x + cellWidth > paddingX + dieWidth - 5) cellWidth = paddingX + dieWidth - 5 - x;
+            
+            // Randomly skip gaps (placement density < 100%)
+            if (Math.random() > 0.15) {
+                ctx.fillStyle = colors[Math.floor(Math.random() * colors.length)];
+                ctx.strokeStyle = 'rgba(180, 255, 180, 0.2)';
+                ctx.lineWidth = 1;
+
+                ctx.fillRect(x, row, cellWidth, (rowHeight/2) - 4);
+                ctx.strokeRect(x, row, cellWidth, (rowHeight/2) - 4);
+            }
+            // Add a small gap between cells
+            x += cellWidth + (Math.random() > 0.5 ? 1 : 4); 
+        }
+    }
+
+    // 5. Draw Macro Blocks (E.g. SRAM memory arrays)
+    // Draw two large SRAM blocks mimicking the image's top emptyish structures
+    ctx.fillStyle = 'rgba(40, 60, 100, 0.6)'; // Blueish memory block
+    ctx.strokeStyle = 'rgba(100, 150, 255, 0.8)';
+    ctx.lineWidth = 2;
+    
+    // Macro 1
+    ctx.fillRect(paddingX + 20, paddingY + 20, 180, 120);
+    ctx.strokeRect(paddingX + 20, paddingY + 20, 180, 120);
+    
+    // Macro 2
+    ctx.fillRect(paddingX + dieWidth - 220, paddingY + 20, 180, 120);
+    ctx.strokeRect(paddingX + dieWidth - 220, paddingY + 20, 180, 120);
+
+    // 6. Draw Routing (Metal wiring)
+    ctx.strokeStyle = 'rgba(255, 220, 100, 0.4)'; // Thin yellow metal lines
+    ctx.lineWidth = 0.5;
+    for(let i=0; i<800; i++) {
+        let x1 = paddingX + Math.random() * dieWidth;
+        let y1 = paddingY + Math.random() * dieHeight;
+        let length = 5 + Math.random() * 40;
+        
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        
+        // Manhattan routing (horizontal or vertical only)
+        if (Math.random() > 0.5) {
+            if (x1 + length <= paddingX + dieWidth) ctx.lineTo(x1 + length, y1);
+        } else {
+            if (y1 + length <= paddingY + dieHeight) ctx.lineTo(x1, y1 + length);
+        }
+        ctx.stroke();
+    }
+
+    // 7. Outer outline
+    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(paddingX, paddingY, dieWidth, dieHeight);
+
+</script>
+</body>
+</html>

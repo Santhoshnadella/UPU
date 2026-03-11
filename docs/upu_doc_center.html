@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UPU Project Master Documentation Center</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --accent: #38bdf8;
+            --text: #f1f5f9;
+            --dim: #94a3b8;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            padding: 50px;
+        }
+
+        .hero {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .hero h1 {
+            font-size: 42px;
+            margin: 0;
+            background: linear-gradient(90deg, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero p {
+            font-size: 18px;
+            color: var(--dim);
+            margin-top: 10px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 24px;
+            transition: transform 0.3s, border-color 0.3s;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent);
+        }
+
+        .card h3 {
+            margin: 0;
+            color: var(--accent);
+            font-size: 20px;
+        }
+
+        .card p {
+            margin: 0;
+            color: var(--dim);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .tag {
+            background: rgba(56, 189, 248, 0.1);
+            color: var(--accent);
+            padding: 4px 10px;
+            border-radius: 5px;
+            font-size: 11px;
+            font-weight: 700;
+            width: fit-content;
+            text-transform: uppercase;
+        }
+
+        .section-title {
+            font-size: 12px;
+            font-weight: 800;
+            color: var(--dim);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 10px;
+            grid-column: 1 / -1;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="hero">
+        <h1>UPU Project: Integrated Delivery Portal</h1>
+        <p>Unified Processing Unit (v1 Edge & v2 Ultra) Architecture, RTL, and Physical Metrology</p>
+    </div>
+
+    <div class="grid">
+        <div class="section-title">✨ Interactive Visualizations</div>
+
+        <a href="upu_ultra_dashboard.html" class="card">
+            <div class="tag">Performance</div>
+            <h3>Ultra Perceptive Dashboard</h3>
+            <p>Real-time simulation of 2.0 GHz performance, thermal dynamics, and NoC flit throughput for 1B parameter
+                models.</p>
+        </a>
+
+        <a href="upu_v2_floorplan.html" class="card">
+            <div class="tag">Physical</div>
+            <h3>UPU v2 Silicon Floorplan</h3>
+            <p>Interactive 7nm chip layout structure showing CPU, Titan GPU and Infinity TPU macro placement.</p>
+        </a>
+
+        <a href="../openlane/transistor_sim.html" class="card">
+            <div class="tag">Physics</div>
+            <h3>Transistor-Level Visualizer</h3>
+            <p>Microscopic CMOS gate simulation. Watch electrons move through NMOS/PMOS transistors on silicon.</p>
+        </a>
+
+        <a href="microscope_gallery.html" class="card">
+            <div class="tag">Metrology</div>
+            <h3>Microscope Die Gallery</h3>
+            <p>Scanning Electron Microscope (SEM) and Optical Macro photos generated from the UPU physical design flow.
+            </p>
+        </a>
+
+        <div class="section-title">📄 Publications & Specifications</div>
+
+        <a href="research_paper.md" class="card">
+            <div class="tag">Research</div>
+            <h3>Novel Architecture Paper</h3>
+            <p>A Peer-review style technical paper detailing the Cross-Domain NoC and Heterogeneous Compute
+                breakthroughs.</p>
+        </a>
+
+        <a href="blog_post.md" class="card">
+            <div class="tag">Marketing</div>
+            <h3>Tech-Crunch Style Blog</h3>
+            <p>Public-facing announcement of the UPU v2 "Ultra" launch, highlighting the AAA gaming and AI capabilities.
+            </p>
+        </a>
+
+        <a href="upu_v2_ultra_overview.md" class="card">
+            <div class="tag">Datasheet</div>
+            <h3>UPU v2 Ultra Datasheet</h3>
+            <p>Core 2.0 GHz metrics, HBM3 bandwidth specs, and NoC mesh architecture topology.</p>
+        </a>
+
+        <a href="implementation_plan.md" class="card">
+            <div class="tag">Roadmap</div>
+            <h3>Full Project Log</h3>
+            <p>The step-by-step implementation history, including verification summaries and tape-out status.</p>
+        </a>
+
+        <div class="section-title">📂 Open Files</div>
+    </div>
+
+    <div style="text-align: center; margin-top: 60px; color: var(--dim); font-size: 12px; font-family: monospace;">
+        UPU PROJECT | STATUS: TAPE-OUT SUCCESS | TARGET: N7 SILICON
+    </div>
+
+</body>
+
+</html>

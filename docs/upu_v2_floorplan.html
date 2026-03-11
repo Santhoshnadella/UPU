@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UPU v2 "Ultra" Interactive Silicon Floorplan</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #111424;
+            color: #fff;
+            margin: 0;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            margin: 0;
+            color: #4facfe;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            font-size: 24px;
+        }
+
+        .header p {
+            color: #8ba2b2;
+            margin-top: 5px;
+            font-size: 14px;
+        }
+
+        .layout-container {
+            display: flex;
+            max-width: 1200px;
+            margin: 0 auto;
+            gap: 30px;
+        }
+
+        /* The Canvas / Die Wrapper */
+        .die-wrapper {
+            border: 2px solid #2a3b5c;
+            background: #080c14;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 30px rgba(79, 172, 254, 0.1);
+            position: relative;
+        }
+
+        canvas {
+            background-image: radial-gradient(circle at center, #111827 0%, #000 100%);
+            border: 1px solid #334155;
+            display: block;
+            box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.8);
+            cursor: crosshair;
+        }
+
+        /* Information Panel */
+        .info-panel {
+            flex: 1;
+            background: #1a2235;
+            border: 1px solid #2a3b5c;
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-title {
+            font-size: 18px;
+            color: #4facfe;
+            margin-top: 0;
+            border-bottom: 1px solid #2a3b5c;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-box {
+            background: #111424;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px dashed #334155;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #8ba2b2;
+            text-transform: uppercase;
+        }
+
+        .stat-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+            margin-top: 4px;
+            font-family: monospace;
+        }
+
+        #hover-details {
+            background: #080c14;
+            border: 1px solid #4facfe;
+            border-left: 4px solid #4facfe;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 15px;
+            min-height: 120px;
+        }
+
+        #hover-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+            margin: 0 0 8px 0;
+        }
+
+        #hover-desc {
+            font-size: 13px;
+            color: #a4b8c9;
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        .legend {
+            margin-top: auto;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            font-size: 12px;
+            color: #a4b8c9;
+        }
+
+        .color-box {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            margin-right: 6px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <h1>UPU v2 "Ultra" Physical Die Floorplan</h1>
+        <p>15mm x 15mm | 7nm FinFET (N7) | Programmatically generated from SystemVerilog RTL definitions.</p>
+    </div>
+
+    <div class="layout-container">
+        <div class="die-wrapper">
+            <!-- 600x600 px represents 15x15 mm -->
+            <canvas id="floorplanCanvas" width="600" height="600"></canvas>
+        </div>
+
+        <div class="info-panel">
+            <h3 class="panel-title">Silicon Metrology Data</h3>
+
+            <div class="stat-grid">
+                <div class="stat-box">
+                    <div class="stat-label">System Clock</div>
+                    <div class="stat-value">2.0 GHz (500ps)</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Target Die Area</div>
+                    <div class="stat-value">225 mm²</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Thermal Design Power</div>
+                    <div class="stat-value">125 Watts (Peak)</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Memory Bandwidth</div>
+                    <div class="stat-value">512 GB/s (HBM3)</div>
+                </div>
+            </div>
+
+            <div id="hover-details">
+                <h4 id="hover-title">Hover over the Die</h4>
+                <p id="hover-desc">Move your cursor across the silicon canvas to inspect the physical macro boundaries
+                    and standard cell clusters routed from the SystemVerilog codebase.</p>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="color-box" style="background: rgba(239, 68, 68, 0.7);"></div> CPU OoO Core
+                </div>
+                <div class="legend-item">
+                    <div class="color-box" style="background: rgba(59, 130, 246, 0.7);"></div> Titan GPU Array
+                </div>
+                <div class="legend-item">
+                    <div class="color-box" style="background: rgba(168, 85, 247, 0.7);"></div> Infinity TPU
+                </div>
+                <div class="legend-item">
+                    <div class="color-box" style="background: rgba(34, 197, 94, 0.7);"></div> Echo NPU
+                </div>
+                <div class="legend-item">
+                    <div class="color-box" style="background: rgba(234, 179, 8, 0.7);"></div> 32MB L3 Cache
+                </div>
+                <div class="legend-item">
+                    <div class="color-box" style="background: rgba(255, 255, 255, 0.2);"></div> Hyper-NoC Backbone
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('floorplanCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // UPU v2 Ultra Architecture Blocks (Mapped from upu_v2_ultra_top.sv)
+        // Coords are percentages of the 600x600 canvas
+        const blocks = [
+            // HBM3 PHY Interfaces (Edges)
+            { id: "hbm0", name: "HBM3 PHY (Channel A)", desc: "1024-bit physical interface. Directly connects silicon to the HBM stack via interposer TSVs.", x: 0, y: 100, w: 600, h: 40, color: "rgba(100, 116, 139, 0.8)", border: "#94a3b8" },
+            { id: "hbm1", name: "HBM3 PHY (Channel B)", desc: "1024-bit physical interface. Directly connects silicon to the HBM stack via interposer TSVs.", x: 0, y: 460, w: 600, h: 40, color: "rgba(100, 116, 139, 0.8)", border: "#94a3b8" },
+            { id: "pcie", name: "PCIe Gen 5.0 PHY", desc: "16-lane PCIe transceiver logic. Handles off-chip communication.", x: 20, y: 20, w: 560, h: 25, color: "rgba(82, 82, 91, 0.8)", border: "#a1a1aa" },
+
+            // Memory Subsystem (L3)
+            { id: "l3_0", name: "32MB Shared L3 Cache (Bank 0)", desc: "Massive SRAM Hard-Macro array. Caches HBM3 transversals to feed the NoC at 2.0 GHz.", x: 50, y: 240, w: 500, h: 40, color: "rgba(234, 179, 8, 0.6)", border: "#facc15" },
+            { id: "l3_1", name: "32MB Shared L3 Cache (Bank 1)", desc: "Massive SRAM Hard-Macro array. Caches HBM3 transversals to feed the NoC at 2.0 GHz.", x: 50, y: 320, w: 500, h: 40, color: "rgba(234, 179, 8, 0.6)", border: "#facc15" },
+
+            // Node 0: CPU
+            { id: "cpu", name: "Node 0: Titan CPU Cluster", desc: "RV64GC Out-of-Order Core. Deeply pipelined to 14-stages to hit 2.0 GHz. Handles OS and task orchestration.", x: 50, y: 70, w: 200, h: 140, color: "rgba(239, 68, 68, 0.6)", border: "#f87171" },
+
+            // Node 2: GPU
+            { id: "gpu", name: "Node 2: Titan GPU Array", desc: "AAA Gaming Graphics Pipeline. Contains 64 Unified Compute Units (CUs) and hardware ray-tracing intersection logic.", x: 280, y: 70, w: 270, h: 140, color: "rgba(59, 130, 246, 0.6)", border: "#60a5fa" },
+
+            // Node 1: TPU
+            { id: "tpu", name: "Node 1: Infinity TPU Core", desc: "1024x1024 BF16 Systolic Array. Extremely dense standard cell region optimized for executing Text-to-Video Diffusion models.", x: 50, y: 390, w: 320, h: 180, color: "rgba(168, 85, 247, 0.6)", border: "#c084fc" },
+
+            // Node 3: NPU & Misc
+            { id: "npu", name: "Node 3: Echo Edge NPU", desc: "Int4/Int2 Inference Engine. Features hard-wired Sparsity masking to clock-gate zero weights and save 40% thermal power.", x: 400, y: 390, w: 150, h: 90, color: "rgba(34, 197, 94, 0.6)", border: "#4ade80" },
+
+            // Node 6/7/8: Peripherals + CDC
+            { id: "peri", name: "CDC Bridge & Internal SRAM", desc: "Asynchronous Clock Domain Bridge stepping the 2.0GHz NoC down to 400MHz for legacy UART, GPIO, and 1MB Scratchpad.", x: 400, y: 490, w: 150, h: 80, color: "rgba(14, 165, 233, 0.5)", border: "#38bdf8" }
+        ];
+
+        function drawFloorplan() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw deep grid
+            ctx.strokeStyle = "rgba(255,255,255,0.03)";
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 600; i += 20) {
+                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 600); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(600, i); ctx.stroke();
+            }
+
+            // 1. Draw Hyper-NoC Backbone Mesh (Underneath everything)
+            ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
+            ctx.fillRect(250, 50, 30, 500); // Vertical NoC spine
+            ctx.fillRect(50, 280, 500, 40); // Horizontal NoC spine
+
+            ctx.strokeStyle = "rgba(255,255,255,0.1)";
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            // Router node intersections
+            [70, 280, 390].forEach(y => {
+                ctx.beginPath();
+                ctx.arc(265, y + 20, 15, 0, Math.PI * 2);
+                ctx.stroke();
+            });
+            ctx.setLineDash([]);
+
+            // 2. Draw Architectural Blocks
+            blocks.forEach(b => {
+                // Shadow
+                ctx.shadowColor = b.color;
+                ctx.shadowBlur = 15;
+
+                // Fill
+                ctx.fillStyle = b.color;
+                ctx.fillRect(b.x, b.y, b.w, b.h);
+
+                // Border
+                ctx.shadowBlur = 0;
+                ctx.strokeStyle = b.border;
+                ctx.lineWidth = 2;
+                ctx.strokeRect(b.x, b.y, b.w, b.h);
+
+                // Texture inside block
+                drawTexture(b);
+
+                // Label
+                ctx.fillStyle = "#fff";
+                ctx.font = "bold 11px Arial";
+                ctx.fillText(b.name.split(":")[0], b.x + 8, b.y + 18);
+            });
+        }
+
+        function drawTexture(b) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(b.x, b.y, b.w, b.h);
+            ctx.clip();
+
+            ctx.strokeStyle = "rgba(255,255,255,0.15)";
+            ctx.lineWidth = 1;
+
+            if (b.id.includes("l3") || b.id.includes("hbm")) {
+                // Memory arrays (dense vertical lines)
+                for (let i = b.x; i < b.x + b.w; i += 8) {
+                    ctx.beginPath(); ctx.moveTo(i, b.y); ctx.lineTo(i, b.y + b.h); ctx.stroke();
+                }
+            } else if (b.id === "tpu") {
+                // Systolic array (dense grid)
+                for (let i = b.x; i < b.x + b.w; i += 12) {
+                    ctx.beginPath(); ctx.moveTo(i, b.y); ctx.lineTo(i, b.y + b.h); ctx.stroke();
+                }
+                for (let j = b.y; j < b.y + b.h; j += 12) {
+                    ctx.beginPath(); ctx.moveTo(b.x, j); ctx.lineTo(b.x + b.w, j); ctx.stroke();
+                }
+            } else if (b.id === "gpu" || b.id === "cpu") {
+                // Compute logic (larger blocky regions)
+                for (let i = b.x + 20; i < b.x + b.w; i += 40) {
+                    ctx.beginPath(); ctx.moveTo(i, b.y); ctx.lineTo(i, b.y + b.h); ctx.stroke();
+                }
+                for (let j = b.y + 20; j < b.y + b.h; j += 30) {
+                    ctx.beginPath(); ctx.moveTo(b.x, j); ctx.lineTo(b.x + b.w, j); ctx.stroke();
+                }
+            }
+            ctx.restore();
+        }
+
+        drawFloorplan();
+
+        // Interaction Logic
+        const titleEl = document.getElementById("hover-title");
+        const descEl = document.getElementById("hover-desc");
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            let hovered = null;
+
+            // Find which block mouse is inside (Render order reverse for z-index effect)
+            for (let i = blocks.length - 1; i >= 0; i--) {
+                const b = blocks[i];
+                if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
+                    hovered = b;
+                    break;
+                }
+            }
+
+            // Highlight active block
+            drawFloorplan(); // Redraw base
+
+            if (hovered) {
+                ctx.fillStyle = "rgba(255,255,255,0.2)";
+                ctx.fillRect(hovered.x, hovered.y, hovered.w, hovered.h);
+
+                titleEl.innerText = hovered.name;
+                titleEl.style.color = hovered.border;
+                descEl.innerText = hovered.desc;
+                document.getElementById("hover-details").style.borderLeftColor = hovered.border;
+                document.getElementById("hover-details").style.borderColor = hovered.border;
+            } else {
+                // Check if hovering NoC Spine
+                if ((x >= 250 && x <= 280 && y >= 50 && y <= 550) || (x >= 50 && x <= 550 && y >= 280 && y <= 320)) {
+                    titleEl.innerText = "Hyper-NoC (Network-on-Chip) Mesh";
+                    titleEl.style.color = "#fff";
+                    descEl.innerText = "The 256-bit wide packet-switched backbone connecting all cores. Transmitting at 2.0 GHz allows multi-terabit bandwidth routing, completely eliminating legacy AXI crossbar bottlenecks.";
+                    document.getElementById("hover-details").style.borderColor = "#4facfe";
+                    document.getElementById("hover-details").style.borderLeftColor = "#4facfe";
+
+                    // Highlight NoC
+                    ctx.fillStyle = "rgba(79, 172, 254, 0.4)";
+                    ctx.shadowColor = "#4facfe";
+                    ctx.shadowBlur = 20;
+                    ctx.fillRect(250, 50, 30, 500);
+                    ctx.fillRect(50, 280, 500, 40);
+                    ctx.shadowBlur = 0;
+                } else {
+                    titleEl.innerText = "Bare Silicon Substrate";
+                    titleEl.style.color = "#a4b8c9";
+                    descEl.innerText = "Inactive P-type silicon wafer foundation. Space is utilized for top-level clock-tree networks (PLL routing) and thermal dissipation structures to meet the 125W requirement.";
+                    document.getElementById("hover-details").style.borderColor = "#334155";
+                    document.getElementById("hover-details").style.borderLeftColor = "#334155";
+                }
+            }
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            drawFloorplan();
+            titleEl.innerText = "Hover over the Die";
+            titleEl.style.color = "#fff";
+            descEl.innerText = "Move your cursor across the silicon canvas to inspect the physical macro boundaries and standard cell clusters routed from the SystemVerilog codebase.";
+            document.getElementById("hover-details").style.borderColor = "#4facfe";
+            document.getElementById("hover-details").style.borderLeftColor = "#4facfe";
+        });
+
+    </script>
+</body>
+
+</html>

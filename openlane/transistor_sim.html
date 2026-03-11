@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transistor-Level Interactive Layout Simulator</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1e1e1e;
+            color: #fff;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #toolbar {
+            background-color: #2d2d30;
+            padding: 10px 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            border-bottom: 1px solid #3f3f46;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            z-index: 10;
+        }
+
+        button {
+            background-color: #007acc;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #0098ff;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background-color: #1e1e1e;
+            padding: 5px 15px;
+            border-radius: 6px;
+            border: 1px solid #3f3f46;
+        }
+
+        .label {
+            font-size: 13px;
+            color: #cccccc;
+        }
+
+        .value {
+            font-family: monospace;
+            font-size: 16px;
+            font-weight: bold;
+            color: #4fc1ff;
+        }
+
+        #canvas-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background-color: #0d0d0d;
+            cursor: grab;
+        }
+
+        #canvas-container:active {
+            cursor: grabbing;
+        }
+
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            transform-origin: 0 0;
+        }
+
+        #legend {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(30, 30, 30, 0.8);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #444;
+            font-size: 12px;
+            pointer-events: none;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .box {
+            width: 14px;
+            height: 14px;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="toolbar">
+        <div style="font-weight: 800; font-size: 18px; margin-right: 20px; letter-spacing: 1px; color: #4ec9b0;">UPU v1:
+            CMOS Visualizer</div>
+
+        <button id="btn-step" onclick="stepSimulation()">⏱️ Step Clock</button>
+        <button id="btn-play" onclick="togglePlay()">▶️ Auto Run</button>
+        <button id="btn-reset" onclick="resetSim()" style="background-color: #d16969;">↺ Reset</button>
+
+        <div class="control-group">
+            <div class="label">Input A:</div>
+            <button onclick="toggleInput('A')" id="btn-a" style="background:#4fc1ff; color:black;">0</button>
+            <div class="label">Input B:</div>
+            <button onclick="toggleInput('B')" id="btn-b" style="background:#4fc1ff; color:black;">0</button>
+        </div>
+
+        <div class="control-group">
+            <div class="label">Output (Q):</div>
+            <div class="value" id="val-q">0</div>
+        </div>
+
+        <div style="flex:1;"></div>
+        <div class="label">Scroll to Zoom | Click & Drag to Pan</div>
+    </div>
+
+    <div id="canvas-container">
+        <canvas id="cmosCanvas"></canvas>
+        <div id="legend">
+            <div class="legend-item">
+                <div class="box" style="background: rgba(255, 60, 60, 0.7); border: 1px solid red;"></div> PolySilicon
+                (Gate)
+            </div>
+            <div class="legend-item">
+                <div class="box" style="background: rgba(80, 220, 100, 0.6); border: 1px solid green;"></div>
+                N-Diffusion (NMOS)
+            </div>
+            <div class="legend-item">
+                <div class="box" style="background: rgba(220, 180, 80, 0.6); border: 1px solid orange;"></div>
+                P-Diffusion (PMOS)
+            </div>
+            <div class="legend-item">
+                <div class="box" style="background: rgba(60, 130, 255, 0.5); border: 1px solid blue;"></div> Metal 1
+                (Routing)
+            </div>
+            <div class="legend-item">
+                <div class="box" style="background: #000; border: 1px solid #666;"></div> Contact Via
+            </div>
+            <div class="legend-item" style="margin-top: 10px;"><i>Bright colors = HIGH (1 / VDD)</i></div>
+            <div class="legend-item"><i>Dark colors = LOW (0 / GND)</i></div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Interactive Transistor-Level Simulation
+         * Demonstrating a CMOS NAND Gate feeding an Inverter (Logical AND behavior)
+         * Inspired by Visual6502 but simplified for local browser rendering.
+         */
+
+        const canvas = document.getElementById('cmosCanvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('canvas-container');
+
+        // Viewport transforms
+        let scale = 3.0;
+        let panX = 100;
+        let panY = 100;
+        let isDragging = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+
+        function resizeCanvas() {
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            draw();
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        // Simulation State
+        let state = {
+            A: 0,
+            B: 0,
+            VDD: 1,
+            GND: 0,
+            NAND_OUT: 1,
+            Q: 0,
+            running: false,
+            time: 0
+        };
+
+        let playInterval = null;
+
+        // Layout Geometry (nm/um scale mapped to pixels)
+        // Layers: 0=N-Diff, 1=P-Diff, 2=Poly, 3=Metal1, 4=Contact
+        const layout = [
+            // --- PMOS Network (Top) ---
+            // VDD Rail
+            { layer: 3, x: 50, y: 30, w: 300, h: 20, name: 'VDD_RAIL', dynamic: false, val: 1 },
+
+            // P-Diffusion Region (Source to Drain traces)
+            { layer: 1, x: 100, y: 80, w: 150, h: 40, name: 'P_DIFF_NAND' },
+
+            // Contacts to VDD
+            { layer: 4, x: 110, y: 35, w: 10, h: 10 },
+            { layer: 3, x: 110, y: 35, w: 10, h: 60, name: 'VDD_TAP1', dynamic: false, val: 1 }, // Metal down to diff
+            { layer: 4, x: 110, y: 95, w: 10, h: 10 },
+
+            { layer: 4, x: 230, y: 35, w: 10, h: 10 },
+            { layer: 3, x: 230, y: 35, w: 10, h: 60, name: 'VDD_TAP2', dynamic: false, val: 1 },
+            { layer: 4, x: 230, y: 95, w: 10, h: 10 },
+
+            // Poly Gates crossing P-Diff (Creates PMOS Transistors)
+            { layer: 2, x: 140, y: 70, w: 20, h: 60, name: 'POLY_A' }, // Gate A
+            { layer: 2, x: 190, y: 70, w: 20, h: 60, name: 'POLY_B' }, // Gate B
+
+            // Common Drain Contact (NAND Output)
+            { layer: 4, x: 170, y: 95, w: 10, h: 10 },
+            { layer: 3, x: 170, y: 95, w: 10, h: 100, name: 'METAL_NAND_OUT' }, // Metal connecting P-net to N-net
+
+            // --- NMOS Network (Bottom) ---
+            // N-Diffusion Region (Series)
+            { layer: 0, x: 160, y: 200, w: 30, h: 130, name: 'N_DIFF_NAND' },
+
+            // Poly Gates crossing N-Diff
+            { layer: 2, x: 150, y: 220, w: 50, h: 20, name: 'POLY_A_BOT' }, // Gate A extended
+            { layer: 2, x: 150, y: 280, w: 50, h: 20, name: 'POLY_B_BOT' }, // Gate B extended
+
+            // Poly Routing (Connecting Top and Bottom gates)
+            { layer: 2, x: 110, y: 220, w: 40, h: 20, name: 'POLY_A_ROUTE1' },
+            { layer: 2, x: 110, y: 220, w: 20, h: -150, name: 'POLY_A_ROUTE2' },
+            { layer: 2, x: 110, y: 70, w: 30, h: 20, name: 'POLY_A_ROUTE3' },
+
+            { layer: 2, x: 125, y: 280, w: 25, h: 20, name: 'POLY_B_ROUTE1' },
+            { layer: 2, x: 125, y: 280, w: 20, h: -210, name: 'POLY_B_ROUTE2' },
+            { layer: 2, x: 125, y: 70, w: 65, h: 20, name: 'POLY_B_ROUTE3' },
+
+            // GND Rail
+            { layer: 3, x: 50, y: 350, w: 300, h: 20, name: 'GND_RAIL', dynamic: false, val: 0 },
+
+            // Contact to GND
+            { layer: 4, x: 170, y: 315, w: 10, h: 10 },
+            { layer: 3, x: 170, y: 315, w: 10, h: 40, name: 'GND_TAP', dynamic: false, val: 0 },
+            { layer: 4, x: 170, y: 355, w: 10, h: 10 },
+
+            // Contact from N-Diff to NAND Output Metal
+            { layer: 4, x: 170, y: 205, w: 10, h: 10 },
+
+            // --- Inputs A and B ---
+            { layer: 3, x: 50, y: 215, w: 40, h: 30, name: 'IN_A_PAD' },
+            { layer: 4, x: 80, y: 225, w: 10, h: 10 }, // Contact to Poly A
+            { layer: 2, x: 80, y: 220, w: 30, h: 20, name: 'POLY_A_PAD' },
+
+            { layer: 3, x: 50, y: 275, w: 40, h: 30, name: 'IN_B_PAD' },
+            { layer: 4, x: 80, y: 285, w: 10, h: 10 }, // Contact to Poly B
+            { layer: 2, x: 80, y: 280, w: 30, h: 20, name: 'POLY_B_PAD' },
+
+            // --- Inverter Stage (NAND -> INV = AND) ---
+            // NAND Out Metal extending to Inverter gates
+            { layer: 3, x: 170, y: 150, w: 80, h: 10, name: 'METAL_NAND_OUT2' },
+            { layer: 4, x: 240, y: 150, w: 10, h: 10 },
+
+            { layer: 2, x: 240, y: 90, w: 20, h: 150, name: 'POLY_INV' }, // Inverter Gate Poly
+
+            // Inverter P-Diff
+            { layer: 1, x: 280, y: 80, w: 30, h: 40, name: 'P_DIFF_INV' },
+            { layer: 2, x: 270, y: 90, w: 50, h: 20, name: 'POLY_INV_CROSS_P' },
+
+            // VDD to Inverter Source
+            { layer: 4, x: 285, y: 35, w: 10, h: 10 },
+            { layer: 3, x: 285, y: 35, w: 10, h: 60, name: 'VDD_TAP_INV', dynamic: false, val: 1 },
+            { layer: 4, x: 285, y: 85, w: 10, h: 10 },
+
+            // Inverter N-Diff
+            { layer: 0, x: 280, y: 200, w: 30, h: 40, name: 'N_DIFF_INV' },
+            { layer: 2, x: 270, y: 210, w: 50, h: 20, name: 'POLY_INV_CROSS_N' },
+
+            // GND to Inverter Source
+            { layer: 4, x: 285, y: 230, w: 10, h: 10 },
+            { layer: 3, x: 285, y: 230, w: 10, h: 120, name: 'GND_TAP_INV', dynamic: false, val: 0 },
+            { layer: 4, x: 285, y: 355, w: 10, h: 10 },
+
+            // Inverter Drain connections (Output Q)
+            { layer: 4, x: 300, y: 85, w: 10, h: 10 }, // PMOS drain
+            { layer: 4, x: 300, y: 210, w: 10, h: 10 }, // NMOS drain
+
+            { layer: 3, x: 300, y: 85, w: 10, h: 135, name: 'METAL_Q_VERT' }, // Connect drains
+            { layer: 3, x: 300, y: 150, w: 60, h: 20, name: 'OUT_Q_PAD' }      // Output Pad
+        ];
+
+        // Physics Simulation Logic
+        function updatePhysics() {
+            // Transistor Physics Solver
+
+            // PMOS Network (NAND)
+            // PMOS conducts when Gate is LOW (0)
+            let pmosA_on = (state.A === 0);
+            let pmosB_on = (state.B === 0);
+
+            // NMOS Network (NAND)
+            // NMOS conducts when Gate is HIGH (1)
+            let nmosA_on = (state.A === 1);
+            let nmosB_on = (state.B === 1);
+
+            // NAND Output Logic
+            if (pmosA_on || pmosB_on) {
+                state.NAND_OUT = 1; // Pulled to VDD
+            } else if (nmosA_on && nmosB_on) {
+                state.NAND_OUT = 0; // Pulled to GND
+            }
+
+            // Inverter Physics
+            let inv_pmos_on = (state.NAND_OUT === 0);
+            let inv_nmos_on = (state.NAND_OUT === 1);
+
+            if (inv_pmos_on) {
+                state.Q = 1; // Pulled to VDD
+            } else if (inv_nmos_on) {
+                state.Q = 0; // Pulled to GND
+            }
+
+            // Update UI
+            document.getElementById('val-q').innerText = state.Q;
+
+            const btnA = document.getElementById('btn-a');
+            btnA.innerText = state.A;
+            btnA.style.background = state.A ? '#4ec9b0' : '#4fc1ff';
+
+            const btnB = document.getElementById('btn-b');
+            btnB.innerText = state.B;
+            btnB.style.background = state.B ? '#4ec9b0' : '#4fc1ff';
+        }
+
+        // Determine color based on voltage level
+        function getVoltageColor(baseColorHigh, baseColorLow, val) {
+            if (val === 1) return baseColorHigh; // Bright (Energized)
+            if (val === 0) return baseColorLow;  // Dark (Ground)
+            return 'rgba(100,100,100,0.5)';      // Floating/Unknown
+        }
+
+        function draw() {
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.setTransform(scale, 0, 0, scale, panX, panY);
+
+            // Draw Substrate Grid
+            ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+            ctx.lineWidth = 1 / scale;
+            for (let i = -1000; i < 2000; i += 20) {
+                ctx.beginPath(); ctx.moveTo(i, -1000); ctx.lineTo(i, 2000); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(-1000, i); ctx.lineTo(2000, i); ctx.stroke();
+            }
+
+            // Draw Layers Order: N-Diff(0), P-Diff(1), Poly(2), Metal1(3), Contact(4)
+            for (let l = 0; l <= 4; l++) {
+                layout.forEach(rect => {
+                    if (rect.layer === l) {
+
+                        let val = -1; // Default floating
+
+                        // Signal mapping
+                        if (rect.dynamic !== false) {
+                            if (rect.name && rect.name.includes('_A_')) val = state.A;
+                            else if (rect.name && rect.name.includes('_B_')) val = state.B;
+                            else if (rect.name && rect.name.includes('NAND_OUT')) val = state.NAND_OUT;
+                            else if (rect.name && rect.name.includes('INV')) val = state.NAND_OUT; // Poly of inverter is NAND out
+                            else if (rect.name && (rect.name.includes('Q_') || rect.name.includes('OUT_'))) val = state.Q;
+                        } else if (rect.val !== undefined) {
+                            val = rect.val;
+                        }
+
+                        ctx.beginPath();
+                        ctx.rect(rect.x, rect.y, rect.w, rect.h);
+
+                        if (l === 0) { // N-Diff
+                            // NMOS Diffusion: High=Bright Green, Low=Dark Green
+                            let isHigh = false;
+                            if (rect.name === 'N_DIFF_NAND' && state.A == 1 && state.B == 1) isHigh = false; // Pulled to GND
+                            else if (rect.name === 'N_DIFF_NAND') isHigh = false;
+
+                            if (rect.name === 'N_DIFF_INV') {
+                                isHigh = (state.Q == 1); // Source is GND, Drain goes to Q
+                            }
+
+                            ctx.fillStyle = getVoltageColor('rgba(100, 255, 130, 0.85)', 'rgba(30, 90, 40, 0.6)', isHigh ? 1 : 0);
+                            ctx.strokeStyle = '#2d9c49';
+                        }
+                        else if (l === 1) { // P-Diff
+                            // PMOS Diffusion: High=Bright Orange, Low=Dark Orange
+                            let isHigh = true;
+                            if (rect.name === 'P_DIFF_NAND') isHigh = (state.NAND_OUT == 1);
+                            if (rect.name === 'P_DIFF_INV') isHigh = (state.Q == 1);
+
+                            ctx.fillStyle = getVoltageColor('rgba(255, 200, 100, 0.85)', 'rgba(120, 80, 40, 0.6)', isHigh ? 1 : 0);
+                            ctx.strokeStyle = '#c48a31';
+                        }
+                        else if (l === 2) { // Poly (Gates)
+                            ctx.fillStyle = getVoltageColor('rgba(255, 60, 60, 0.95)', 'rgba(130, 20, 20, 0.7)', val);
+                            ctx.strokeStyle = '#ff0000';
+                        }
+                        else if (l === 3) { // Metal 1
+                            ctx.fillStyle = getVoltageColor('rgba(80, 160, 255, 0.95)', 'rgba(30, 60, 120, 0.6)', val);
+                            ctx.strokeStyle = '#3461a8';
+                        }
+                        else if (l === 4) { // Contact
+                            ctx.fillStyle = '#0a0a0a';
+                            ctx.strokeStyle = '#666';
+
+                            // Draw X inside contact
+                            ctx.fill();
+                            ctx.stroke();
+                            ctx.beginPath(); ctx.moveTo(rect.x, rect.y); ctx.lineTo(rect.x + rect.w, rect.y + rect.h); ctx.stroke();
+                            ctx.beginPath(); ctx.moveTo(rect.x + rect.w, rect.y); ctx.lineTo(rect.x, rect.y + rect.h); ctx.stroke();
+                            return; // Skip standard fill/stroke
+                        }
+
+                        ctx.fill();
+                        ctx.lineWidth = 1 / scale;
+                        ctx.stroke();
+
+                        // Draw moving electrons (Signal Propagation animation)
+                        if (state.running && val === 1 && (l === 2 || l === 3)) {
+                            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                            const particles = 3;
+                            for (let p = 0; p < particles; p++) {
+                                let offset = ((state.time * 20) + (p * 50)) % (Math.abs(rect.w) + Math.abs(rect.h));
+                                let px = rect.x, py = rect.y;
+                                if (rect.w > rect.h) {
+                                    px += offset % rect.w;
+                                    py += rect.h / 2;
+                                } else {
+                                    py += offset % rect.h;
+                                    px += rect.w / 2;
+                                }
+                                ctx.beginPath();
+                                ctx.arc(px, py, 1.5, 0, Math.PI * 2);
+                                ctx.fill();
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // Controls
+        function toggleInput(pin) {
+            state[pin] = state[pin] === 0 ? 1 : 0;
+            updatePhysics();
+        }
+
+        function stepSimulation() {
+            state.time += 5;
+            state.A = Math.random() > 0.5 ? 1 : 0;
+            state.B = Math.random() > 0.5 ? 1 : 0;
+            updatePhysics();
+        }
+
+        function togglePlay() {
+            state.running = !state.running;
+            const btn = document.getElementById('btn-play');
+            if (state.running) {
+                btn.innerText = '⏸️ Pause';
+                btn.style.background = '#4ec9b0';
+            } else {
+                btn.innerText = '▶️ Auto Run';
+                btn.style.background = '#007acc';
+            }
+        }
+
+        function resetSim() {
+            state.A = 0;
+            state.B = 0;
+            state.time = 0;
+            state.running = false;
+            const btn = document.getElementById('btn-play');
+            btn.innerText = '▶️ Auto Run';
+            btn.style.background = '#007acc';
+            updatePhysics();
+            panX = 100;
+            panY = 100;
+            scale = 3.0;
+        }
+
+        // Mouse Interaction (Pan & Zoom)
+        container.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+        });
+
+        window.addEventListener('mouseup', () => { isDragging = false; });
+
+        window.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                panX += (e.clientX - lastMouseX) / scale;
+                panY += (e.clientY - lastMouseY) / scale;
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+            }
+        });
+
+        container.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomSensitivity = 0.1;
+            const delta = e.deltaY < 0 ? 1 + zoomSensitivity : 1 - zoomSensitivity;
+
+            // Zoom towards mouse
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            const oldScale = scale;
+            scale *= delta;
+
+            // Clamp scale
+            scale = Math.max(0.5, Math.min(scale, 15.0));
+
+            // Adjust pan to zoom around cursor
+            panX -= (mouseX / oldScale) - (mouseX / scale);
+            panY -= (mouseY / oldScale) - (mouseY / scale);
+        }, { passive: false });
+
+        // Continuous Animation Loop
+        function animationLoop() {
+            // Ensure canvas size always matches container size precisely
+            if (canvas.width !== container.clientWidth || canvas.height !== container.clientHeight) {
+                resizeCanvas();
+            }
+
+            if (state.running) {
+                state.time += 0.2;
+                // Randomly flip inputs when auto-running
+                if (Math.abs((state.time % 20) - 0) < 0.2) {
+                    state.A = Math.random() > 0.5 ? 1 : 0;
+                    state.B = Math.random() > 0.5 ? 1 : 0;
+                    updatePhysics();
+                }
+            }
+
+            draw();
+            requestAnimationFrame(animationLoop);
+        }
+
+        // Init with a slight delay to allow CSS layout to finish
+        setTimeout(() => {
+            resizeCanvas();
+            updatePhysics();
+            requestAnimationFrame(animationLoop);
+        }, 150);
+
+    </script>
+</body>
+
+</html>

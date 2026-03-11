@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UPU v3 "Hyperion" 3D Silicon Metrology</title>
+    <style>
+        :root {
+            --neon-blue: #00d2ff;
+            --neon-purple: #9d50bb;
+            --die-base: #1a1a2e;
+            --gold: #ffd700;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: #05050a;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 40px;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 40px;
+        }
+
+        .header {
+            grid-column: 1 / -1;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin: 0;
+            background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+        }
+
+        .header p {
+            color: #888;
+            font-size: 1.1rem;
+            margin-top: 10px;
+        }
+
+        /* 3D Stack Visualization Wrapper */
+        .visualization-card {
+            background: #0f0f1a;
+            border: 1px solid #222;
+            border-radius: 12px;
+            padding: 30px;
+            position: relative;
+            transform-style: preserve-3d;
+            perspective: 1200px;
+        }
+
+        .canvas-container {
+            width: 100%;
+            height: 600px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Information Panel */
+        .info-panel {
+            background: rgba(15, 15, 26, 0.8);
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+        }
+
+        .spec-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .spec-item {
+            padding: 15px;
+            background: #151525;
+            border: 1px dashed #444;
+            border-radius: 8px;
+        }
+
+        .spec-label {
+            font-size: 0.75rem;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .spec-value {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: #fff;
+            margin-top: 5px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: rgba(0, 210, 255, 0.1);
+            border: 1px solid var(--neon-blue);
+            color: var(--neon-blue);
+            border-radius: 20px;
+            font-size: 0.8rem;
+            margin-bottom: 15px;
+        }
+
+        /* Die Stacks */
+        .die {
+            position: absolute;
+            width: 400px;
+            height: 300px;
+            transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+            transform-style: preserve-3d;
+            cursor: pointer;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+        }
+
+        #compute-die {
+            background: rgba(157, 80, 187, 0.3);
+            border: 2px solid var(--neon-purple);
+            transform: rotateX(60deg) rotateZ(-30deg) translateZ(100px);
+            z-index: 2;
+        }
+
+        #compute-die:hover {
+            transform: rotateX(60deg) rotateZ(-30deg) translateZ(150px);
+            background: rgba(157, 80, 187, 0.5);
+        }
+
+        #base-die {
+            background: rgba(0, 210, 255, 0.2);
+            border: 2px solid var(--neon-blue);
+            transform: rotateX(60deg) rotateZ(-30deg) translateZ(0px);
+            z-index: 1;
+        }
+
+        .interconnect-layer {
+            position: absolute;
+            width: 400px;
+            height: 300px;
+            background: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255, 215, 0, 0.1) 10px, rgba(255, 215, 0, 0.1) 11px);
+            transform: rotateX(60deg) rotateZ(-30deg) translateZ(50px);
+            pointer-events: none;
+            opacity: 0.5;
+        }
+
+        .pulse {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: var(--gold);
+            border-radius: 50%;
+            filter: blur(5px);
+            animation: pulse-move 4s infinite linear;
+        }
+
+        @keyframes pulse-move {
+            0% { transform: translate(50px, 50px) translateZ(0px); opacity: 0; }
+            50% { opacity: 1; transform: translate(200px, 150px) translateZ(50px); }
+            100% { transform: translate(350px, 250px) translateZ(100px); opacity: 0; }
+        }
+
+        .metrology-log {
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            color: #3f3;
+            background: #000;
+            padding: 15px;
+            border-radius: 4px;
+            height: 150px;
+            overflow-y: auto;
+            border-left: 4px solid #3f3;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <h1>UPU v3 Hyperion: 3D-Stack metrology</h1>
+        <p>Pre-Silicon Sign-off Preview | 2nm GAA | Disaggregated SoIC Architecture</p>
+    </div>
+
+    <div class="container">
+        <div class="visualization-card">
+            <div class="canvas-container">
+                <!-- 3D Stack Mockup -->
+                <div id="compute-die" class="die" onclick="showInfo('compute')">
+                    <div style="padding: 20px; color: #fff; font-weight: bold; text-shadow: 0 0 10px #000;">
+                        Hyperion-C (Compute Die)<br>
+                        <span style="font-size: 0.8rem; font-weight: normal;">2nm GAA | 3.5 GHz | 8-Layer Metal</span>
+                    </div>
+                </div>
+                
+                <div class="interconnect-layer"></div>
+                <div class="pulse" style="animation-delay: 0s;"></div>
+                <div class="pulse" style="animation-delay: 1.5s;"></div>
+                
+                <div id="base-die" class="die" onclick="showInfo('base')">
+                    <div style="padding: 20px; color: #fff; font-weight: bold; text-shadow: 0 0 10px #000; position: absolute; bottom: 0;">
+                        Hyperion-M (Memory Hub)<br>
+                        <span style="font-size: 0.8rem; font-weight: normal;">5nm FinFET | 128MB L3 | HBM4 Interface</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-panel">
+            <div class="status-badge">SILICON SIGN-OFF ACTIVE</div>
+            <h2 id="panel-title">System Overview</h2>
+            <p id="panel-desc">Select a chiplet in the 3D stack to inspect its micro-architecture and thermal telemetry.</p>
+
+            <div class="spec-grid">
+                <div class="spec-item">
+                    <div class="spec-label">Peak Frequency</div>
+                    <div class="spec-value">3.5 GHz</div>
+                </div>
+                <div class="spec-item">
+                    <div class="spec-label">Power Mode</div>
+                    <div class="spec-value">BSPD (Active)</div>
+                </div>
+                <div class="spec-item">
+                    <div class="spec-label">3D Interconnect</div>
+                    <div class="spec-value">UCIe x16</div>
+                </div>
+                <div class="spec-item">
+                    <div class="spec-label">HBM Throughput</div>
+                    <div class="spec-value">1,024 GB/s</div>
+                </div>
+            </div>
+
+            <div class="metrology-log" id="log">
+                [00.00s] UPU_SYSTEM: Powering up 3D Mesh...<br>
+                [00.05s] BSPD: Backside Power Grid Stable.<br>
+                [00.12s] UCIe: Link training SUCCESS (Lanes 0-15).<br>
+                [00.18s] NOX_3D: Routing table synchronized.<br>
+                [00.25s] THERMAL: Monitoring Tj (Current: 31.4C).
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const log = document.getElementById('log');
+        const title = document.getElementById('panel-title');
+        const desc = document.getElementById('panel-desc');
+
+        function addLog(msg) {
+            const time = (performance.now() / 1000).toFixed(2);
+            log.innerHTML += `<br>[${time}s] ${msg}`;
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function showInfo(type) {
+            if (type === 'compute') {
+                title.innerText = "Hyperion-C (Compute Chiplet)";
+                title.style.color = "#9d50bb";
+                desc.innerText = "Features 8x High-Performance Titan-Next Cores and the Infinity TPU. Backside Power Delivery (BSPD) reduces frontside routing congestion by 40%. Direct hybrid bonding to the base die via TSMC SoIC.";
+                addLog("METROLOGY: Accessing N2 GAA Gate-Leakage sensors...");
+            } else if (type === 'base') {
+                title.innerText = "Hyperion-M (Memory Hub)";
+                title.style.color = "#00d2ff";
+                desc.innerText = "Hosts the high-density logic including 128MB of SRAM macros and the HBM4 PHY. Optimized for 5nm to allow massive area for the Hyper-NoC 3D routing hubs.";
+                addLog("METROLOGY: Scanning L3 SRAM redundancy rows...");
+            }
+        }
+
+        // Random log events
+        setInterval(() => {
+            const msgs = [
+                "UCIe: Heartbeat OK.",
+                "TPU: Sparse-Engine gated for idle.",
+                "BSPD: Nano-TSV voltage monitor: 0.701V.",
+                "NoC: Packet load balancing in progress.",
+                "HBM4: Channel 7 refresh pulse."
+            ];
+            addLog(msgs[Math.floor(Math.random() * msgs.length)]);
+        }, 5000);
+    </script>
+</body>
+
+</html>

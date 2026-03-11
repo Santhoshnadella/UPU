@@ -1,0 +1,58 @@
+# UPU v2 "Ultra" Design Contract
+# Target Node: 7nm (High-Performance Compute)
+# Target Frequency: 2.0 GHz (500ps clock period)
+
+system:
+  bus_architecture: "Network-on-Chip (NoC)"
+  bus_width: 256  # 256-bit wide flits
+  clock_domains:
+    - cpu_domain: 2000MHz
+    - gpu_domain: 1800MHz  # Slightly lower for thermal density
+    - tpu_domain: 1600MHz
+    - peripheral_domain: 400MHz
+
+cpu_ultra:
+  architecture: "RV64GC (Out-of-Order)"
+  issue_width: 4
+  reorder_buffer_size: 128
+  pipeline_depth: 14
+  l1_cache: "64KB (I) / 64KB (D)"
+  l2_cache: "1MB (Unified)"
+
+tpu_infinity:
+  target_model: "1B Parameter Transformer (Text-2-Video)"
+  precision: ["FP8", "BF16", "INT8"]
+  systolic_clusters: 16
+  cluster_size: 64x64
+  throughput: "128 TFLOPS (FP16)"
+  memory_bandwidth: "512 GB/s (HBM3)"
+
+gpu_titan:
+  target_performance: "AAA Class (1080p @ 60fps / 4K @ 30fps)"
+  shader_cores: 64
+  threads_per_core: 32
+  rasterization: "Hardware Accelerated"
+  ray_tracing: "Hardware BVH Traversal"
+  texture_units: 32
+  pixels_per_clock: 16
+
+npu_echo_edge:
+  quantization: ["INT4", "INT2", "Binary"]
+  sparsity_support: true
+  power_efficiency: "15 TOPS/W"
+
+memory_hierarchy:
+  l3_cache: "32MB (Shared NoC Cache)"
+  dram_interface: "HBM3 (4-Stacks)"
+  dram_width: 1024
+
+floorplan_hints:
+  die_size: "15mm x 15mm"
+  thermal_limit: "125W (Active Cooling)"
+  voltage: 0.85V
+
+logic_rules:
+  - "Clock gating mandatory for all idle pipeline stages."
+  - "Pipelined AXI4 (2-cycle minimum latency for bus traversal)."
+  - "Hard-macro SRAM separation for L2/L3 caches."
+  - "No single combinational path > 25 gates (for 2GHz closure)."

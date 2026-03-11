@@ -1,0 +1,29 @@
+{
+    "DESIGN_NAME": "upu_top",
+    "VERILOG_FILES": [
+        "dir::../rtl/*.sv",
+        "dir::../rtl/bus/*.sv",
+        "dir::../rtl/cores/*.sv",
+        "dir::../rtl/memory/*.sv",
+        "dir::../rtl/peripherals/*.sv"
+    ],
+    "CLOCK_PORT": "clk",
+    "CLOCK_PERIOD": 20.0,
+    "FP_CORE_UTIL": 45,
+    "FP_ASPECT_RATIO": 1,
+    "PL_TARGET_DENSITY": 0.45,
+    "GLB_RT_ADJUSTMENT": 0.15,
+    "SYNTH_STRATEGY": "DELAY 2",
+    "SYNTH_MAX_FANOUT": 8,
+    "CTS_TARGET_SKEW": 200,
+    "RUN_CVC": false,
+    "RUN_KLAYOUT_XOR": false,
+    "ROUTING_CORES": 4,
+    "MAGIC_DEF_NO_BLOCKAGES": true,
+    "FP_PDN_VPITCH": 100,
+    "FP_PDN_HPITCH": 100,
+    "FP_PDN_VWIDTH": 1.6,
+    "FP_PDN_HWIDTH": 1.6,
+    "MACRO_PLACEMENT_CFG": "dir::macro_placement.cfg",
+    "DIE_AREA": "0 0 2000 2000"
+}
