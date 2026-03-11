@@ -182,6 +182,21 @@
             fill: #666; font-size: 32px; font-weight: 800; pointer-events: none;
             text-transform: uppercase; letter-spacing: 2px;
         }
+
+        /* Power & Memory Stats */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .stat-card {
+            background: #111;
+            padding: 8px;
+            border-left: 3px solid var(--metal);
+        }
+        .stat-label { font-size: 9px; color: #666; }
+        .stat-value { font-size: 14px; font-weight: bold; color: #fff; }
     </style>
 </head>
 <body>
@@ -220,7 +235,7 @@
                 <div class="btn" id="m-GPU" onclick="setSimMode('GPU')">VEC_CORE</div>
                 <div class="btn" id="m-NPU" onclick="setSimMode('NPU')">SPARSE</div>
                 <div class="btn" id="m-MEM" onclick="setSimMode('MEM')">I_BUS</div>
-                <div class="btn" id="m-FULL" onclick="setSimMode('FULL')">OVERLOAD</div>
+                <div class="btn" id="m-PWR" onclick="setSimMode('PWR')">PMU_CTL</div>
             </div>
 
             <div class="slider-box">
@@ -238,7 +253,24 @@
 
         <div class="panel-section" style="font-family: monospace; font-size: 12px; color: #fff;">
             <div>PC: <span id="st-pc">0000</span> | INST: <span id="st-inst">NOP</span></div>
-            <div>TEMP: <span id="st-temp">32.4</span>°C | PWR: <span id="st-pwr">12.5</span>W</div>
+            <div class="stat-grid">
+                <div class="stat-card">
+                    <div class="stat-label">DIE TEMP</div>
+                    <div class="stat-value"><span id="st-temp">32.4</span>°C</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">TOTAL PWR</div>
+                    <div class="stat-value"><span id="st-pwr">12.5</span>W</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">RAM UTIL</div>
+                    <div class="stat-value"><span id="st-ram">14</span>%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">PMU STATE</div>
+                    <div class="stat-value" id="st-pmu">BALANCED</div>
+                </div>
+            </div>
         </div>
 
         <div id="mem-dump"></div>
@@ -308,10 +340,20 @@
     }
 
     function initDie() {
-        drawGrid(150, 150, 800, 700, "MEM", 40);
+        // High Speed Memory Bus
+        drawGrid(150, 150, 850, 100, "BUS", 20);
+
+        // RAM & ROM Blocks
+        drawGrid(150, 300, 400, 550, "RAM", 60);
+        drawGrid(600, 300, 400, 550, "ROM", 30);
+        
+        // Compute Clusters
         drawGrid(1050, 150, 800, 700, "GPU", 60);
         drawGrid(150, 950, 800, 900, "NPU", 80);
         drawGrid(1050, 950, 800, 900, "TPU", 100);
+
+        // PMU (Power Management Unit)
+        drawGrid(150, 1900, 1700, 100, "PMU", 15);
         
         // Power rails
         for(let i=0; i<4; i++) {
@@ -335,7 +377,7 @@
         
         // Update Thermal Dynamics
         Object.keys(thermalData).forEach(k => {
-            const isActive = (mode === k || mode === "FULL");
+            const isActive = (mode === k || (mode === "MEM" && (k === "RAM" || k === "ROM" || k === "BUS")));
             thermalData[k] = isActive ? Math.min(100, thermalData[k] + 2) : Math.max(0, thermalData[k] - 0.5);
             const r = 255 * (thermalData[k]/100);
             const b = 255 * (1 - thermalData[k]/100);
@@ -343,9 +385,16 @@
             if (rect) rect.style.fill = `rgba(${r}, 65, ${b}, 0.4)`;
         });
 
-        const avgHeat = Object.values(thermalData).reduce((a,b)=>a+b, 0) / 4;
+        const avgHeat = Object.values(thermalData).reduce((a,b)=>a+b, 0) / Object.keys(thermalData).length;
         document.getElementById('st-temp').innerText = (32 + (avgHeat * 0.8)).toFixed(1);
-        document.getElementById('st-pwr').innerText = (12 + (avgHeat * 0.5)).toFixed(1);
+        
+        // Power Management Logic
+        let powerBase = mode === "PWR" ? 5 : 12;
+        let powerMult = mode === "PWR" ? 0.2 : 0.5;
+        document.getElementById('st-pwr').innerText = (powerBase + (avgHeat * powerMult)).toFixed(1);
+        document.getElementById('st-pmu').innerText = mode === "PWR" ? "ECO_MODE" : (avgHeat > 70 ? "THERMAL_THROTTLE" : "PERFORMANCE");
+        document.getElementById('st-pmu').style.color = avgHeat > 70 ? "var(--thermal-hot)" : (mode === "PWR" ? "var(--diff)" : "#fff");
+        document.getElementById('st-ram').innerText = Math.floor(10 + Math.random() * 80);
 
         // Visual pulses
         document.querySelectorAll('.glow').forEach(g => g.classList.remove('glow'));
