@@ -160,6 +160,14 @@ We have documented the exact paths to bring UPU to physical silicon for **₹0 (
 *   [**India Path (C-DAC/SCL)**](docs/tape_out_submission.md#option-2-scl-mohali-via-chipin-centre-india): Leveraging the Design Linked Incentive (DLI) for 180nm fabrication.
 *   [**Pre-Submission Checklist**](docs/tape_out_submission.md#tape-out-readiness-checklist-the-golden-rules): Essential steps for DRC/LVS validation.
 
+## 🎓 Academic & Research Resources
+
+If you are a student, researcher, or professor, we have provided comprehensive materials to understand the UPU architecture:
+
+*   [**Academic Masterplan**](docs/academic_masterplan.md): A complete study syllabus and defense guide.
+*   [**Presentation Script**](docs/academic_masterplan.md#🎙%EF%B8%8F-2-the-speech-script-5-minute-pitch): A high-impact 5-minute pitch for showcase events.
+*   [**System Walkthrough**](docs/academic_masterplan.md#💻-3-codebase-walkthrough-how-systems-work-together): Technical analysis of the RTL blocks and NoC logic.
+
 ---
 
 ## ⚡ Quick Start (Synthesis)
