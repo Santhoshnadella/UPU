@@ -10,6 +10,13 @@
 #   physical     : Executed LibreLane Physical Design (GDSII)
 # -------------------------------------------------------------------------
 
+# Tool Definitions
+IVERILOG  = iverilog
+VVP       = vvp
+VERILATOR = verilator
+YOSYS     = yosys
+OPENLANE  = openlane
+
 RTL_DIR = ./rtl
 TB_DIR = ./tb
 OUTPUT_DIR = ./build
@@ -27,6 +34,18 @@ LDFLAGS = -T ./firmware/link.ld -nostdlib
 FW_SOURCES = ./firmware/src/main.c ./firmware/drivers/tpu.c ./firmware/drivers/gpu.c ./firmware/drivers/npu.c ./firmware/drivers/uart.c ./firmware/drivers/plic.c ./firmware/drivers/timer.c ./firmware/drivers/gpio.c
 FW_ASM = ./firmware/crt0.S
 
+# Source Files for Simulation
+SOURCES = $(RTL_DIR)/upu_top.sv \
+          $(RTL_DIR)/bus/hyper_noc.sv \
+          $(RTL_DIR)/cores/rv64_top.sv \
+          $(RTL_DIR)/cores/rv64_core.sv \
+          $(RTL_DIR)/cores/tpu_core.sv \
+          $(RTL_DIR)/cores/tpu_pe.sv \
+          $(RTL_DIR)/cores/npu_core.sv \
+          $(RTL_DIR)/cores/npu_pe.sv \
+          $(RTL_DIR)/cores/gpu_core.sv \
+          $(RTL_DIR)/memory/l2_sram.sv
+
 .PHONY: all clean sim_top sim_cpu sim_tpu sim_npu sim_gpu synth physical firmware lint
 
 all: firmware sim_top sim_cpu sim_tpu sim_npu sim_gpu
@@ -37,13 +56,19 @@ clean:
 # -------------------------------------------------------------------------
 # Linting (Verilator)
 # -------------------------------------------------------------------------
-lint:
-	verilator --lint-only -Wall --timing -Irtl/cores -Irtl/bus rtl/cores/rv64_top.sv
+lint_top:
+	$(VERILATOR) --lint-only -Wall --timing -y rtl/cores -y rtl/bus rtl/upu_top.sv
+
+lint_core:
+	$(VERILATOR) --lint-only -Wall --timing -y rtl/cores -y rtl/bus rtl/cores/rv64_top.sv
+
+lint: lint_core
 
 # -------------------------------------------------------------------------
 # Firmware Build
 # -------------------------------------------------------------------------
 firmware:
+	mkdir -p $(OUTPUT_DIR)
 	$(CC) $(CFLAGS) $(FW_ASM) $(FW_SOURCES) $(LDFLAGS) -o $(OUTPUT_DIR)/firmware.elf
 	$(OBJCOPY) -O binary $(OUTPUT_DIR)/firmware.elf $(OUTPUT_DIR)/bootloader.bin
 	$(OBJCOPY) -O ihex $(OUTPUT_DIR)/firmware.elf $(OUTPUT_DIR)/bootloader.hex
@@ -52,22 +77,27 @@ firmware:
 # Simulation
 # -------------------------------------------------------------------------
 sim_top:
+	mkdir -p $(OUTPUT_DIR)
 	$(IVERILOG) -g2012 -o $(OUTPUT_DIR)/top_sim $(TB_DIR)/upu_top_tb.sv $(SOURCES)
 	$(VVP) $(OUTPUT_DIR)/top_sim
 
 sim_cpu:
-	$(IVERILOG) -g2012 -o $(OUTPUT_DIR)/cpu_sim $(TB_DIR)/rv64_top_tb.sv $(RTL_DIR)/cores/rv64_top.sv
+	mkdir -p $(OUTPUT_DIR)
+	$(IVERILOG) -g2012 -o $(OUTPUT_DIR)/cpu_sim $(TB_DIR)/rv64_top_tb.sv $(RTL_DIR)/cores/rv64_top.sv $(RTL_DIR)/cores/rv64_core.sv
 	$(VVP) $(OUTPUT_DIR)/cpu_sim
 
 sim_tpu:
+	mkdir -p $(OUTPUT_DIR)
 	$(IVERILOG) -g2012 -o $(OUTPUT_DIR)/tpu_sim $(TB_DIR)/tpu_core_tb.sv $(RTL_DIR)/cores/tpu_core.sv $(RTL_DIR)/cores/tpu_pe.sv
 	$(VVP) $(OUTPUT_DIR)/tpu_sim
 
 sim_npu:
+	mkdir -p $(OUTPUT_DIR)
 	$(IVERILOG) -g2012 -o $(OUTPUT_DIR)/npu_sim $(TB_DIR)/npu_core_tb.sv $(RTL_DIR)/cores/npu_core.sv $(RTL_DIR)/cores/npu_pe.sv
 	$(VVP) $(OUTPUT_DIR)/npu_sim
 
 sim_gpu:
+	mkdir -p $(OUTPUT_DIR)
 	$(IVERILOG) -g2012 -o $(OUTPUT_DIR)/gpu_sim $(TB_DIR)/gpu_core_tb.sv $(RTL_DIR)/cores/gpu_core.sv
 	$(VVP) $(OUTPUT_DIR)/gpu_sim
 

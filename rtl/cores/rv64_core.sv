@@ -110,6 +110,7 @@ module rv64_core #(
             ex_opcode <= 0;
             ex_we     <= 0;
             ex_rd     <= 0;
+            ex_pc     <= 0;
         end else begin
             ex_pc       <= id_pc;
             ex_rs1_data <= rs1_data_raw;
@@ -123,6 +124,10 @@ module rv64_core #(
             ex_we       <= (id_instr[6:0] != 7'h23 && id_instr[6:0] != 7'h63);
         end
     end
+
+    // Suppress lint for ex_pc (used in debug/tracing)
+    logic [XLEN-1:0] _unused_pc;
+    assign _unused_pc = ex_pc;
 
     // -------------------------------------------------------------------------
     // EXECUTE (EX)
@@ -179,7 +184,9 @@ module rv64_core #(
     // WRITEBACK (WB)
     // -------------------------------------------------------------------------
     always_ff @(posedge clk) begin
-        if (rst_n && wb_we && wb_rd != 0) begin
+        if (!rst_n) begin
+            for (int i = 0; i < 32; i++) regfile[i] <= 0;
+        end else if (wb_we && wb_rd != 0) begin
             regfile[wb_rd] <= wb_data;
         end
     end

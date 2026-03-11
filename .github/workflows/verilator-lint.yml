@@ -19,4 +19,4 @@ jobs:
 
       - name: Run Verilator Lint
         run: |
-          verilator --lint-only -Wall --timing -Irtl/cores -Irtl/bus rtl/cores/rv64_top.sv
+          make lint_core

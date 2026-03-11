@@ -27,8 +27,10 @@ SECTIONS
 
     .bss :
     {
+        _bss_start = .;
         *(.bss .bss.*)
         *(COMMON)
+        _bss_end = .;
     } > ram
 
     _end = .;
