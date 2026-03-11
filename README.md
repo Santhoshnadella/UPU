@@ -146,6 +146,20 @@ One of the most critical aspects of UPU is proving it can be physically manufact
 *   [**Developer Guide**](docs/developer_guide.md): Learn how to write code for the UPU unified HAL and build applications that span from Edge to HPC.
 *   [**Fabrication Bottlenecks**](docs/developer_guide.md#3-hardware-bottlenecks--known-challenges): Understanding "Dark Silicon," CDC, and Chiplet latency.
 
+## 🎖️ National Pride: India Semiconductor Mission (ISM)
+
+The UPU project is designed to align with the **Atmanirbhar Bharat** vision, utilizing the **SCL Mohali 180nm** line and the **C-DAC ChipIn Centre**. By mapping the UPU architecture to indigenous fabrication pipelines, we are proving that high-end CPU/GPU/TPU design is possible on Indian soil.
+
+---
+
+## 🚀 Zero-Cost Fabrication (Tape-Out)
+
+We have documented the exact paths to bring UPU to physical silicon for **₹0 (Zero Rupees)**:
+
+*   [**International Path (Efabless/Google)**](docs/tape_out_submission.md#option-1-efabless-open-mpw-international): Submission guide for the Sky130 node.
+*   [**India Path (C-DAC/SCL)**](docs/tape_out_submission.md#option-2-scl-mohali-via-chipin-centre-india): Leveraging the Design Linked Incentive (DLI) for 180nm fabrication.
+*   [**Pre-Submission Checklist**](docs/tape_out_submission.md#tape-out-readiness-checklist-the-golden-rules): Essential steps for DRC/LVS validation.
+
 ---
 
 ## ⚡ Quick Start (Synthesis)
