@@ -130,6 +130,24 @@ How does UPU compare to the most prominent open-source hardware research and ind
 
 ---
 
+## 🧪 Fabrication Validation & Feasibility
+
+One of the most critical aspects of UPU is proving it can be physically manufactured. We utilize a multi-stage validation pipeline:
+
+1.  **Logical Verification**: 100% UVM-based coverage of RTL in `tb/`.
+2.  **Physical Feasibility**: Using `contracts/` to enforce DRC (Design Rule Check) constraints for 7nm FinFET and 2nm GAA nodes.
+3.  **Thermal Integrity**: Advanced modeling in `scripts/hyperion_thermal_model.py` to ensure the **Hyper-NoC** doesn't exceed thermal envelopes at 2.0GHz.
+4.  **Tape-Out Ready**: The v1 Edge architecture is verified via **OpenLane** for GDSII generation on Skywater 130nm.
+
+---
+
+## 👩‍💻 Developer Resources
+
+*   [**Developer Guide**](docs/developer_guide.md): Learn how to write code for the UPU unified HAL and build applications that span from Edge to HPC.
+*   [**Fabrication Bottlenecks**](docs/developer_guide.md#3-hardware-bottlenecks--known-challenges): Understanding "Dark Silicon," CDC, and Chiplet latency.
+
+---
+
 ## ⚡ Quick Start (Synthesis)
 
 ### For Edge (v1):
